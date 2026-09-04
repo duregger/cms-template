@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /cms/{allPaths=**} {
+      allow read: if true;
+      // @beginthework.com is always an editor. Add a client domain with |
+      // e.g. .*@(beginthework\\.com|client\\.com)$
+      allow write: if request.auth != null
+        && request.auth.token.email.matches('.*@beginthework\\.com$');
+    }
+  }
+}

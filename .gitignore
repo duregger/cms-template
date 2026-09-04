@@ -1,0 +1,28 @@
+node_modules
+dist
+build
+
+# Local env files (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+*.local
+
+# Firebase
+.firebase
+
+# Compiled Cloud Functions output (built from functions/src)
+functions/lib
+
+# Service account credentials — never commit
+*service-account*.json
+*-service-account.json
+
+# Generated seed artifacts (normalized BrandTokens payloads)
+scratch/
+
+# Build cache
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store

@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // @beginthework.com is always an editor. Add a client domain with |
+    // e.g. .*@(beginthework\\.com|client\\.com)$
+    function isCmsEditor() {
+      return request.auth != null
+        && request.auth.token.email.matches('.*@beginthework\\.com$');
+    }
+
+    match /spaces/{spaceId}/{document=**} {
+      allow read: if true;
+      allow write: if isCmsEditor();
+    }
+
+    match /settings/{docId} {
+      allow read, write: if isCmsEditor();
+    }
+
+    // Legacy top-level collections (kept for backward compatibility during migration)
+    match /pages/{pageId} {
+      allow read: if true;
+      allow write: if isCmsEditor();
+    }
+    match /components/{componentId} {
+      allow read: if true;
+      allow write: if isCmsEditor();
+    }
+    match /design-tokens/{docId} {
+      allow read: if true;
+      allow write: if isCmsEditor();
+    }
+  }
+}

@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* macOS renders text heavier than intended; smooth it once at the root. */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root {
+  /* Brand colors — overridden at runtime by design-tokens from Firestore */
+  --brand-primary: #3b3bff;
+  --brand-cloud: #eef1ff;
+  --brand-mist: #dfe4ff;
+  --brand-ink: #14142b;
+  --brand-accent: #ffb020;
+  --brand-success: #4d7c0f;
+  --brand-gray: #d4d4d4;
+
+  /* Accent registers derived from --brand-primary — see src/lib/accent.ts.
+     These defaults match accentScale('#3b3bff'); useDesignTokens() recomputes
+     them whenever the brand primary changes. */
+  --brand-rest: rgba(59, 59, 255, 0.13);
+  --brand-hover: rgba(59, 59, 255, 0.26);
+  --brand-ink-on-tint: #292999;
+  --brand-on: #fbfcfd;
+  --brand-rail: #f4f4ff;
+  --brand-wash: #b3b3ff;
+
+  /* CMS admin chrome — neutral scale, independent of the brand accent */
+  --cms-page: #e1e6e9;
+  --cms-surface: #fbfcfd;
+  --cms-text-muted: rgba(26, 24, 20, 0.62);
+  --cms-text-subtle: rgba(26, 24, 20, 0.42);
+  --cms-hairline: rgba(26, 24, 20, 0.10);
+  --cms-hairline-soft: rgba(26, 24, 20, 0.07);
+  --cms-danger: #dc2626;
+  --cms-danger-strong: #b91c1c;
+  --cms-danger-tint: #fef2f2;
+
+  /* Motion */
+  --cms-ease-panel: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Typography sizes */
+  --headline-size: clamp(48px, 10vw, 91px);
+  --subheader-size: clamp(24px, 4vw, 46.991px);
+  --body-size: 16px;
+  --button-size: 22px;
+
+  /* Button tokens */
+  --btn-radius: 100px;
+  --btn-primary-bg: var(--brand-primary);
+  --btn-primary-text: var(--brand-cloud);
+  --btn-secondary-bg: var(--brand-ink);
+  --btn-secondary-text: var(--brand-cloud);
+}
+
+/* Metallophile Sp8 */
+@font-face {
+  font-family: 'Metallophile Sp8';
+  src: url('/fonts/MetallophileSp8-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Metallophile Sp8';
+  src: url('/fonts/MetallophileSp8-LightItalic.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Metallophile Sp8';
+  src: url('/fonts/MetallophileSp8-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Metallophile Sp8';
+  src: url('/fonts/MetallophileSp8-MediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Optic — Medium Expanded (500) for buttons */
+@font-face {
+  font-family: 'Optic';
+  src: url('/fonts/Optic-MediumExpanded.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-stretch: expanded;
+  font-display: swap;
+}
+/* Optic — Bold Expanded (700) for labels */
+@font-face {
+  font-family: 'Optic';
+  src: url('/fonts/Optic-BoldExpanded.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-stretch: expanded;
+  font-display: swap;
+}
+/* Optic — Medium (500) for nav links */
+@font-face {
+  font-family: 'Optic';
+  src: url('/fonts/Optic-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+/* Optic — Heavy Expanded (800) for headlines */
+@font-face {
+  font-family: 'Optic';
+  src: url('/fonts/Optic-HeavyExpanded.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-stretch: expanded;
+  font-display: swap;
+}
+
+/* Button variants driven by design tokens */
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+.btn-secondary {
+  background-color: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+}
+
+/* Typography system */
+.font-button {
+  font-family: 'Cabin', 'Helvetica Neue', sans-serif;
+  font-weight: 700;
+  line-height: 120%;
+}
+
+.font-label {
+  font-family: 'Optic', 'Impact', 'Helvetica Neue', sans-serif;
+  font-stretch: expanded;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.font-body {
+  font-family: 'Cabin', 'Helvetica Neue', sans-serif;
+  font-weight: 500;
+}
+
+.font-headline {
+  font-family: 'Optic', 'Impact', 'Helvetica Neue', sans-serif;
+  font-stretch: expanded;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.font-subheader {
+  font-family: 'Metallophile Sp8', 'Helvetica Neue', sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

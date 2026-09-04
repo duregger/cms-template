@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BEGIN the work CMS — manage content across web, apps, and alerts." />
+    <title>BEGIN the work CMS</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta property="og:image" content="/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cabin:wght@400;500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Re-apply the last-known design tokens synchronously, before first paint,
+      // so a refresh shows the real brand color instead of flashing the static
+      // :root fallback while src/hooks/useDesignTokens.ts fetches from Firestore.
+      (function () {
+        try {
+          var cached = localStorage.getItem('cms-tokens-vars')
+          if (!cached) return
+          var vars = JSON.parse(cached)
+          var root = document.documentElement.style
+          for (var name in vars) root.setProperty(name, vars[name])
+        } catch (e) {
+          // best-effort only
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
