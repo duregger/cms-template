@@ -6,6 +6,36 @@ interface CmsRelease {
 
 const RELEASES: CmsRelease[] = [
   {
+    version: '0.5.0',
+    date: 'September 5, 2026',
+    groups: [
+      {
+        heading: 'Website',
+        items: [
+          'Sitemap and llms.txt update when a post goes live, without rebuilding the site',
+          'Update posts include article structured data for search',
+        ],
+      },
+    ],
+  },
+  {
+    version: '0.4.0',
+    date: 'September 5, 2026',
+    groups: [
+      {
+        heading: 'Website',
+        items: [
+          'Updates lists posts in a compact card grid, with filters by category',
+          'A post page shows the story, hero, and photo collage',
+          'Click a photo for a full-screen viewer with arrows and thumbnails',
+          'On a phone, swipe or tap a thumbnail to change photos',
+          'Post titles use a smaller headline on mobile',
+          'Build sitemap.xml and llms.txt include /updates and live posts',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.3.0',
     date: 'September 5, 2026',
     groups: [

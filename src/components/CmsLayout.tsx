@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type MutableRefObject } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { useCmsPagesContext } from '@/contexts/CmsPagesContext'
@@ -7,7 +7,7 @@ import { useSpace } from '@/contexts/SpaceContext'
 import { CMS_NOTIFICATION_CATEGORIES, isBlogSpace, isReservedSpace } from '@/types/cms'
 import type { CmsComponent, CmsSpace } from '@/types/cms'
 import { SpaceSwitcher } from '@/components/SpaceSwitcher'
-import type { CmsSidebarSection } from '@/hooks/useCmsPages'
+import type { CmsPageSummary, CmsSidebarSection } from '@/hooks/useCmsPages'
 import { AccountSheet, initials, type ProfilePatch } from '@/components/AccountSheet'
 import { useProjectSettings } from '@/hooks/useProjectSettings'
 import { resolveClientLogos } from '@/types/settings'
@@ -165,6 +165,178 @@ function ComponentNavList({
   )
 }
 
+function SectionPagesNav({
+  space,
+  slugs,
+  pages,
+  childrenOf,
+  onReorder,
+  manageSections,
+  onRemove,
+  pageDragKind,
+}: {
+  space: CmsSpace
+  slugs: string[]
+  pages: CmsPageSummary[]
+  childrenOf: (parent: string) => CmsPageSummary[]
+  onReorder: (next: string[]) => void
+  manageSections: boolean
+  onRemove: (slug: string) => void
+  pageDragKind: MutableRefObject<'move' | 'reorder' | null>
+}) {
+  const draggingId = useRef<string | null>(null)
+  const [dropAt, setDropAt] = useState<{ id: string; before: boolean } | null>(null)
+  const [expandedPages, setExpandedPages] = useState<Set<string>>(new Set())
+
+  const commit = (next: string[]) => {
+    if (next.length !== slugs.length || next.every((id, i) => id === slugs[i])) return
+    onReorder(next)
+  }
+
+  const moveBy = (id: string, delta: number) => {
+    const i = slugs.indexOf(id)
+    const j = i + delta
+    if (i < 0 || j < 0 || j >= slugs.length) return
+    const item = slugs[i]
+    if (!item) return
+    const next = [...slugs]
+    next.splice(i, 1)
+    next.splice(j, 0, item)
+    commit(next)
+  }
+
+  const togglePage = (slug: string) => {
+    setExpandedPages((prev) => {
+      const next = new Set(prev)
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      return next
+    })
+  }
+
+  return (
+    <ul className="mt-0.5 space-y-0.5">
+      {slugs.map((slug) => {
+        const page = pages.find((p) => p.slug === slug)
+        const children = childrenOf(slug)
+        const isExp = expandedPages.has(slug)
+        return (
+          <li
+            key={slug}
+            className="group/item relative flex flex-wrap items-start"
+            onDragOver={(e) => {
+              if (pageDragKind.current !== 'reorder' || !draggingId.current) return
+              e.preventDefault()
+              e.stopPropagation()
+              e.dataTransfer.dropEffect = 'move'
+              const rect = e.currentTarget.getBoundingClientRect()
+              setDropAt({ id: slug, before: e.clientY < rect.top + rect.height / 2 })
+            }}
+            onDragLeave={(e) => {
+              const related = e.relatedTarget
+              if (related instanceof Node && e.currentTarget.contains(related)) return
+              setDropAt((cur) => (cur?.id === slug ? null : cur))
+            }}
+            onDrop={(e) => {
+              if (pageDragKind.current !== 'reorder') return
+              e.preventDefault()
+              e.stopPropagation()
+              const from = draggingId.current
+              const at = dropAt
+              draggingId.current = null
+              pageDragKind.current = null
+              setDropAt(null)
+              if (!from) return
+              commit(insertRelative(slugs, from, slug, at?.id === slug ? at.before : true))
+            }}
+          >
+            {dropAt?.id === slug && dropAt.before && (
+              <span className="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded-full bg-brand-primary" />
+            )}
+            {dropAt?.id === slug && !dropAt.before && (
+              <span className="pointer-events-none absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-primary" />
+            )}
+            <div className="flex min-w-0 flex-1 items-center">
+              <button
+                type="button"
+                draggable
+                aria-label={`Reorder ${pageDisplayName(slug, page?.title)}`}
+                title="Drag to rearrange, or use arrow keys"
+                onDragStart={(e) => {
+                  draggingId.current = slug
+                  pageDragKind.current = 'reorder'
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', slug)
+                  e.dataTransfer.setData('application/x-cms-drag', 'reorder')
+                }}
+                onDragEnd={() => {
+                  draggingId.current = null
+                  pageDragKind.current = null
+                  setDropAt(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    moveBy(slug, -1)
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    moveBy(slug, 1)
+                  }
+                }}
+                className="shrink-0 cursor-grab rounded p-1.5 text-text-subtle transition-colors duration-state hover:bg-hairline-soft hover:text-brand-ink active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+              >
+                <GripVertical className="h-3.5 w-3.5" />
+              </button>
+              {children.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => togglePage(slug)}
+                  className="shrink-0 rounded p-1 text-text-muted transition hover:bg-hairline-soft"
+                  aria-expanded={isExp}
+                  aria-label={`${isExp ? 'Collapse' : 'Expand'} ${pageDisplayName(slug, page?.title)}`}
+                >
+                  <svg
+                    width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2"
+                    className={`transition-transform ${isExp ? 'rotate-90' : ''}`}
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </button>
+              )}
+              <PageLink slug={slug} title={page?.title} space={space} size="md" />
+              {manageSections && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(slug)}
+                  className="shrink-0 rounded p-1 text-text-muted opacity-0 transition-colors duration-state hover:text-danger group-hover/item:opacity-100"
+                  title="Remove from section"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {children.length > 0 && isExp && (
+              <ul className="ml-8 w-full space-y-0.5 border-l border-hairline pl-1">
+                {children.map((child) => (
+                  <li key={child.slug}>
+                    <PageLink slug={child.slug} title={child.title} space={space} size="sm" />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        )
+      })}
+      {slugs.length === 0 && (
+        <li className="px-3 py-2 text-xs text-text-muted">No pages</li>
+      )}
+    </ul>
+  )
+}
+
 function AlertsSidebar({ space }: { space: CmsSpace }) {
   const barCategory = CMS_NOTIFICATION_CATEGORIES.find((c) => c.id === 'announcement_bar')!
   const alertCategories = CMS_NOTIFICATION_CATEGORIES.filter((c) => c.id !== 'announcement_bar')
@@ -294,6 +466,7 @@ export function CmsLayout({ user }: { user: User }) {
   const { pages, sections, saveSections, error } = useCmsPagesContext()
   const { components, reorder: reorderComponents } = useCmsComponentsContext()
   const draggingSlug = useRef<string | null>(null)
+  const pageDragKind = useRef<'move' | 'reorder' | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   const [accountOpen, setAccountOpen] = useState(false)
@@ -341,11 +514,14 @@ export function CmsLayout({ user }: { user: User }) {
 
   const handleDragStart = (slug: string) => (e: React.DragEvent) => {
     draggingSlug.current = slug
+    pageDragKind.current = 'move'
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', slug)
+    e.dataTransfer.setData('application/x-cms-drag', 'move')
   }
 
   const handleDragOver = (sectionId: string) => (e: React.DragEvent) => {
+    if (pageDragKind.current === 'reorder') return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDropTarget(sectionId)
@@ -358,8 +534,10 @@ export function CmsLayout({ user }: { user: User }) {
   const handleDrop = (sectionId: string) => async (e: React.DragEvent) => {
     e.preventDefault()
     setDropTarget(null)
+    if (pageDragKind.current === 'reorder') return
     const slug = draggingSlug.current
     draggingSlug.current = null
+    pageDragKind.current = null
     if (!slug) return
 
     const updated = sections.map((s) => ({
@@ -382,7 +560,14 @@ export function CmsLayout({ user }: { user: User }) {
 
   const handleDragEnd = () => {
     draggingSlug.current = null
+    pageDragKind.current = null
     setDropTarget(null)
+  }
+
+  const reorderSectionPages = (sectionId: string, nextSlugs: string[]) => {
+    void saveSections(
+      sections.map((s) => (s.id === sectionId ? { ...s, pages: nextSlugs } : s)),
+    )
   }
 
   const toggle = (id: string) => {
@@ -569,9 +754,6 @@ export function CmsLayout({ user }: { user: User }) {
                   {/* Sections */}
                   {sections.map((section) => {
                     const isExp = expanded.has(section.id)
-                    const sectionPages = section.pages
-                      .map((slug) => pages.find((p) => p.slug === slug))
-                      .filter(Boolean) as typeof pages
                     return (
                       <div
                         key={section.id}
@@ -625,28 +807,16 @@ export function CmsLayout({ user }: { user: User }) {
                           )}
                         </button>
                         {isExp && (
-                          <ul className="mt-0.5 space-y-0.5">
-                            {sectionPages.map((p) => (
-                              <li key={p.slug} className="group/item flex items-center">
-                                {renderPageWithChildren(p.slug)}
-                                {manageSections && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removePageFromSection(section.id, p.slug)}
-                                    className="shrink-0 rounded p-1 text-text-muted opacity-0 transition-colors duration-state hover:text-danger group-hover/item:opacity-100"
-                                    title="Remove from section"
-                                  >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M18 6L6 18M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </li>
-                            ))}
-                            {sectionPages.length === 0 && (
-                              <li className="px-3 py-2 text-xs text-text-muted">No pages</li>
-                            )}
-                          </ul>
+                          <SectionPagesNav
+                            space={space}
+                            slugs={section.pages.filter((slug) => pages.some((p) => p.slug === slug))}
+                            pages={pages}
+                            childrenOf={childrenOf}
+                            onReorder={(next) => reorderSectionPages(section.id, next)}
+                            manageSections={manageSections}
+                            onRemove={(slug) => void removePageFromSection(section.id, slug)}
+                            pageDragKind={pageDragKind}
+                          />
                         )}
                         {isExp && manageSections && unsectionedPages.length > 0 && (
                           <select

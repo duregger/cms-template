@@ -1,6 +1,8 @@
 import * as admin from 'firebase-admin'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
+import { logger } from 'firebase-functions'
 import sharp from 'sharp'
+import { notifyWebPostHtml } from '../notify-web-post'
 
 const OG_WIDTH = 1200
 const OG_HEIGHT = 630
@@ -42,7 +44,13 @@ export const generatePostOgImage = onCall(
     }
 
     const heroImage = (source.data()?.heroImage as string | undefined)?.trim()
+    const pingWeb = () =>
+      notifyWebPostHtml(space, slug).catch((err) => {
+        logger.error('notifyWebPostHtml failed', { space, slug, err })
+      })
+
     if (!heroImage) {
+      await pingWeb()
       return { ogImage: null as string | null, skipped: true }
     }
 
@@ -67,6 +75,7 @@ export const generatePostOgImage = onCall(
       editorRef.set({ ogImage }, { merge: true }),
     ])
 
+    await pingWeb()
     return { ogImage, path }
   },
 )

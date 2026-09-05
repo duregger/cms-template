@@ -32,17 +32,30 @@ export async function listPages(req: Request, res: Response) {
       col.doc('_sections').get(),
     ])
 
-    const pages = pagesSnap.docs
-      .filter((d) => !META_DOCS.has(d.id))
-      .map((d) => ({ id: d.id, ...d.data() }))
+    const order = (orderSnap.data()?.slugs as string[] | undefined) ?? []
+    const sections = (sectionsSnap.data()?.sections as { id?: string; name?: string; pages?: string[] }[] | undefined) ?? []
+    const byId = new Map(
+      pagesSnap.docs
+        .filter((d) => !META_DOCS.has(d.id))
+        .map((d) => [d.id, { id: d.id, ...d.data() }]),
+    )
+    const pages: Array<{ id: string } & Record<string, unknown>> = []
+    for (const slug of order) {
+      const page = byId.get(slug)
+      if (page) {
+        pages.push(page)
+        byId.delete(slug)
+      }
+    }
+    pages.push(...byId.values())
 
     res.json({
       success: true,
       space,
       data: {
         pages,
-        order: (orderSnap.data()?.slugs as string[] | undefined) ?? [],
-        sections: (sectionsSnap.data()?.sections as unknown[] | undefined) ?? [],
+        order: order.length > 0 ? order : pages.map((p) => p.id),
+        sections,
       },
       count: pages.length,
     })

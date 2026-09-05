@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getDoc, getDocs, setDoc } from 'firebase/firestore'
 import type { CmsPage, CmsSpace } from '@/types/cms'
 import { spaceCollection, spaceDoc } from '@/lib/firestore-paths'
@@ -25,6 +25,28 @@ type CmsPagesState = {
   error: Error | null
 }
 
+export function navOrderFromSections(
+  pages: CmsPageSummary[],
+  sections: CmsSidebarSection[],
+): string[] {
+  const known = new Set(pages.map((p) => p.slug))
+  const seen = new Set<string>()
+  const next: string[] = []
+  for (const section of sections) {
+    for (const slug of section.pages) {
+      if (!known.has(slug) || seen.has(slug)) continue
+      next.push(slug)
+      seen.add(slug)
+    }
+  }
+  for (const page of pages) {
+    if (seen.has(page.slug)) continue
+    next.push(page.slug)
+    seen.add(page.slug)
+  }
+  return next
+}
+
 function sortByOrder(
   list: CmsPageSummary[],
   order: string[],
@@ -48,6 +70,8 @@ export function useCmsPages(space: CmsSpace) {
     sections: [],
     error: null,
   })
+  const pagesRef = useRef(state.pages)
+  pagesRef.current = state.pages
 
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, error: null }))
@@ -97,8 +121,23 @@ export function useCmsPages(space: CmsSpace) {
   }, [space])
 
   const saveSections = useCallback(async (sections: CmsSidebarSection[]) => {
-    await setDoc(spaceDoc(space, 'pages', SECTIONS_DOC_ID), { sections })
-    setState((s) => ({ ...s, sections }))
+    const slugs = navOrderFromSections(pagesRef.current, sections)
+    try {
+      await Promise.all([
+        setDoc(spaceDoc(space, 'pages', SECTIONS_DOC_ID), { sections }),
+        setDoc(spaceDoc(space, 'pages', ORDER_DOC_ID), { slugs }),
+      ])
+      setState((s) => ({
+        ...s,
+        sections,
+        pages: sortByOrder(s.pages, slugs),
+        error: null,
+      }))
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      setState((s) => ({ ...s, error }))
+      throw err
+    }
   }, [space])
 
   useEffect(() => {

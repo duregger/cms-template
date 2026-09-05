@@ -48,8 +48,9 @@ function siteOrigin(siteUrl?: string): string {
   const raw = siteUrl?.trim() || DEFAULT_SITE
   try {
     const parsed = new URL(raw)
+    const host = parsed.hostname === 'curbside.org' ? 'www.curbside.org' : parsed.hostname
     const path = parsed.pathname.replace(/\/+$/, '')
-    return `${parsed.origin}${path}`
+    return `${parsed.protocol}//${host}${path}`
   } catch {
     return trimSlash(raw)
   }

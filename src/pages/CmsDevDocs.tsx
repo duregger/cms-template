@@ -279,7 +279,7 @@ interface FontFamilyDef {
 
       <SubHeading>Blog posts</SubHeading>
       <P>
-        A blog space is not Web pages. Editor drafts live at <InlineCode>{'spaces/{blogId}/posts/{slug}'}</InlineCode>. Footer or header <strong>Publish</strong> copies live posts to <InlineCode>{'spaces/{blogId}/published-posts/{slug}'}</InlineCode>. The public API, sitemap, and llms.txt read only that published snapshot. Categories are <InlineCode>{'spaces/{blogId}/categories/{id}'}</InlineCode> with <InlineCode>{'{ id, name, slug }'}</InlineCode>; each post stores category ids in <InlineCode>categories: string[]</InlineCode>.
+        A blog space is not Web pages. Editor drafts live at <InlineCode>{'spaces/{blogId}/posts/{slug}'}</InlineCode>. Footer or header <strong>Publish</strong> copies live posts to <InlineCode>{'spaces/{blogId}/published-posts/{slug}'}</InlineCode>. That write also notifies Curbside Web, which generates <InlineCode>{'/updates/{slug}'}</InlineCode> HTML (Open Graph for Slack / iMessage). The public API, sitemap, and llms.txt read only that published snapshot. Categories are <InlineCode>{'spaces/{blogId}/categories/{id}'}</InlineCode> with <InlineCode>{'{ id, name, slug }'}</InlineCode>; each post stores category ids in <InlineCode>categories: string[]</InlineCode>.
       </P>
       <Code>{`{
   slug: "we-got-drafted",
@@ -357,15 +357,19 @@ interface CmsPageSectionItem {
       </P>
 
       <SubHeading>Page ordering</SubHeading>
-      <P>Path: <InlineCode>{'spaces/{spaceId}/pages/_order'}</InlineCode></P>
-      <Code>{`{ slugs: ["home", "about", "catering", ...] }`}</Code>
+      <P>
+        Path: <InlineCode>{'spaces/{spaceId}/pages/_order'}</InlineCode>. Drag the grip on a page in a sidebar section (or use arrow keys on the grip) to rearrange. That writes <InlineCode>slugs</InlineCode> here and the same sequence on each section’s <InlineCode>pages</InlineCode> array. Header <strong>Publish</strong> copies both docs. The website must follow <InlineCode>order</InlineCode> (or <InlineCode>sections[].pages</InlineCode>) — do not sort by title or slug.
+      </P>
+      <Code>{`{ slugs: ["home", "about-us", "get-involved", "our-programs", "contact-us", "donate-now"] }`}</Code>
 
       <SubHeading>Sidebar sections</SubHeading>
       <P>Path: <InlineCode>{'spaces/{spaceId}/pages/_sections'}</InlineCode></P>
-      <P>Used by the CMS admin to organize pages into named groups in the sidebar. Not consumed by client apps.</P>
+      <P>
+        Named groups in the CMS sidebar. <InlineCode>sections[].pages</InlineCode> is the in-section order. The list API returns both <InlineCode>order</InlineCode> (flat nav) and <InlineCode>sections</InlineCode> after Publish.
+      </P>
       <Code>{`{
   sections: [
-    { id: "uuid", name: "Landing Pages", pages: ["home", "catering"] },
+    { id: "uuid", name: "Site", pages: ["home", "about-us", "get-involved"] },
     { id: "uuid", name: "Legal", pages: ["privacy", "terms"] }
   ]
 }`}</Code>
@@ -674,7 +678,7 @@ Response:
 
       <SubHeading>Pages</SubHeading>
       <P>
-        Returns published page documents for a space (header Publish). Until the first publish, it falls back to editor pages. <InlineCode>_order</InlineCode> and <InlineCode>_sections</InlineCode> are included on the list endpoint and are not valid slugs.
+        Returns published page documents for a space (header Publish). Until the first publish, it falls back to editor pages. <InlineCode>_order</InlineCode> and <InlineCode>_sections</InlineCode> are included on the list endpoint and are not valid slugs. <InlineCode>data.pages</InlineCode> is sorted by <InlineCode>data.order</InlineCode>. Use that array — or <InlineCode>data.sections[].pages</InlineCode> — for nav. Rearrange in the CMS sidebar, then Publish.
       </P>
       <Table
         headers={['Method', 'Path', 'Description']}
@@ -719,6 +723,22 @@ Response:
       <P>
         There is no categories REST route. Filter with <InlineCode>post.categories</InlineCode> (ids). Names live at <InlineCode>{'spaces/{space}/categories/{id}'}</InlineCode> in Firestore. <InlineCode>ogImage</InlineCode> is a 1200×630 crop of the hero when the OG function has run; otherwise it falls back to <InlineCode>heroImage</InlineCode>. <InlineCode>bodyHtml</InlineCode> is trusted CMS HTML — render it. Galleries are <InlineCode>{'<figure class="blog-gallery" data-type="blog-gallery" data-images="[…]">'}</InlineCode> with child <InlineCode>img</InlineCode> tags.
       </P>
+      <P>
+        The CMS stores the image URL only. Crawlers read the <strong>website</strong> HTML. On <InlineCode>/updates/:slug</InlineCode> the site must emit Open Graph and Twitter tags from the post payload. Slack, iMessage, and Facebook never call this API.
+      </P>
+      <Code>{[
+        '<title>{post.seoTitle || post.title}</title>',
+        '<meta name="description" content={post.seoDescription || post.excerpt || ""} />',
+        '<meta property="og:type" content="article" />',
+        '<meta property="og:url" content="https://www.curbside.org/updates/{slug}" />',
+        '<meta property="og:title" content={post.seoTitle || post.title} />',
+        '<meta property="og:description" content={post.seoDescription || post.excerpt || ""} />',
+        '<meta property="og:image" content={post.ogImage || post.heroImage || ""} />',
+        '<meta property="og:image:width" content="1200" />',
+        '<meta property="og:image:height" content="630" />',
+        '<meta name="twitter:card" content="summary_large_image" />',
+        '<meta name="twitter:image" content={post.ogImage || post.heroImage || ""} />',
+      ].join('\n')}</Code>
       <Table
         headers={['Method', 'Path', 'Description']}
         rows={[
@@ -874,7 +894,10 @@ const { data } = await res.json()
 
       <SubHeading>Blog on the website</SubHeading>
       <P>
-        Do not model blog posts as Web pages. Read the Updates space over REST (or Firestore <InlineCode>published-posts</InlineCode> if the functions deploy has not landed). Route <InlineCode>/updates</InlineCode> as the index and <InlineCode>/updates/:slug</InlineCode> as the post. Filter with <InlineCode>categories</InlineCode>. Use <InlineCode>ogImage</InlineCode> for social tags. Render <InlineCode>bodyHtml</InlineCode> as HTML. Style with published web tokens — do not invent a second type system.
+        Do not model blog posts as Web pages. Read the Updates space over REST (or Firestore <InlineCode>published-posts</InlineCode> if the functions deploy has not landed). Route <InlineCode>/updates</InlineCode> as the index and <InlineCode>/updates/:slug</InlineCode> as the post. Filter with <InlineCode>categories</InlineCode>. Render <InlineCode>bodyHtml</InlineCode> as HTML. Style with published web tokens — do not invent a second type system.
+      </P>
+      <P>
+        Open Graph is a website job. Publish in the CMS writes <InlineCode>ogImage</InlineCode>; the site must put that URL in <InlineCode>{'<meta property="og:image">'}</InlineCode> on the post route or shares stay generic.
       </P>
       <Code>{`const CMS_API = 'https://curbside-cms.web.app'
 const BLOG = 'updates'
@@ -910,8 +933,11 @@ export async function getPost(slug: string): Promise<CmsPost> {
 
 // Index: /updates          → listPosts()
 // Post:  /updates/:slug    → getPost(slug)
-// Meta:  og:image = post.ogImage ?? post.heroImage
-// Body:  <article dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+// Body:  render post.bodyHtml as HTML
+// Head:  og:title = seoTitle || title
+//        og:description = seoDescription || excerpt
+//        og:image = ogImage || heroImage (1200 x 630)
+//        og:url = https://www.curbside.org/updates/{slug}
 `}</Code>
     </>
   )
