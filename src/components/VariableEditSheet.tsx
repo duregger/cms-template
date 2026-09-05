@@ -5,8 +5,18 @@ import type {
   CmsComponentVariableType,
 } from '@/types/cms'
 import { uploadCmsAsset } from '@/lib/storage'
-import { ChevronDown } from '@/components/icons/ChevronDown'
+import { useBrandTokens } from '@/hooks/useBrandTokens'
 import { useDesignTokens } from '@/hooks/useDesignTokens'
+import { useSpace } from '@/contexts/SpaceContext'
+import {
+  chromeRoleOptions,
+  colorRoleOptions,
+  matchColorOption,
+  previewColor,
+  textColorOptions,
+  type ColorTokenOption,
+} from '@/lib/token-color-options'
+import { fieldUsesTextColor } from '@/lib/variable-field'
 
 const VARIABLE_TYPES: CmsComponentVariableType[] = [
   'text',
@@ -66,7 +76,7 @@ function TypeDefaultVideo({
           type="url"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="min-w-[200px] max-w-md rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+          className="min-w-[200px] max-w-md rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
         />
         <label className="flex cursor-pointer items-center rounded-control border border-hairline bg-hairline-soft px-4 py-2 text-xs font-medium text-text-muted transition-colors duration-state hover:bg-hairline-soft">
           {uploading ? 'Uploading…' : 'Upload'}
@@ -115,7 +125,7 @@ function TypeDefaultImage({
           type="url"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="min-w-[200px] max-w-md rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+          className="min-w-[200px] max-w-md rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
         />
         <label className="flex cursor-pointer items-center rounded-control border border-hairline bg-hairline-soft px-4 py-2 text-xs font-medium text-text-muted transition-colors duration-state hover:bg-hairline-soft">
           {uploading ? 'Uploading…' : 'Upload'}
@@ -132,72 +142,124 @@ function TypeDefaultImage({
   )
 }
 
-const DS_COLOR_LABELS: Record<string, string> = {
-  'brand-primary': 'Brand Blue',
-  'brand-cloud': 'Cloud',
-  'brand-mist': 'Mist',
-  'brand-ink': 'Ink',
-  'brand-accent': 'Accent',
-  'brand-success': 'Success',
-  'brand-gray': 'Gray',
-}
-
 function contrastText(hex: string): string {
   const c = hex.replace('#', '')
-  if (c.length !== 6) return '#000'
+  if (c.length < 6) return '#000'
   const r = parseInt(c.substring(0, 2), 16)
   const g = parseInt(c.substring(2, 4), 16)
   const b = parseInt(c.substring(4, 6), 16)
   return r * 0.299 + g * 0.587 + b * 0.114 > 150 ? '#000000' : '#ffffff'
 }
 
-function TypeDefaultHexcode({
+function ColorTokenPicker({
+  label,
   value,
   onChange,
+  options,
+  loading,
+  emptyHint,
+  allowNone,
+  allowTransparent,
 }: {
+  label: string
   value: string
   onChange: (v: string) => void
+  options: ColorTokenOption[]
+  loading?: boolean
+  emptyHint?: string
+  allowNone?: boolean
+  allowTransparent?: boolean
 }) {
-  const { tokens } = useDesignTokens()
-  const [showCustom, setShowCustom] = useState(false)
+  const selected = matchColorOption(value, options)
+  const isTransparent = allowTransparent && value.trim() === 'transparent'
+  const isCustom = Boolean(value) && !selected && !isTransparent
+  const [showCustom, setShowCustom] = useState(isCustom)
   const pickerRef = useRef<HTMLInputElement>(null)
-
-  const dsColors = Object.entries(tokens.colors) as [string, string][]
-  const isDesignSystemColor = dsColors.some(([, hex]) => hex.toUpperCase() === (value || '').toUpperCase())
+  const swatch = isTransparent ? 'transparent' : previewColor(value, options)
+  const customHex = isCustom ? swatch : '#000000'
+  const none = allowNone && !value
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-text-muted">Default value</span>
+      <span className="text-xs font-medium text-text-muted">{label}</span>
+      {loading && options.length === 0 ? (
+        <p className="text-xs text-text-subtle">Loading design system colors…</p>
+      ) : options.length === 0 ? (
+        <p className="text-xs text-text-subtle">
+          {emptyHint ?? 'No color scales in this space yet. Publish a design system or use Custom.'}
+        </p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
-        {dsColors.map(([key, hex]) => {
-          const selected = hex.toUpperCase() === (value || '').toUpperCase()
+        {allowNone && (
+          <button
+            type="button"
+            aria-pressed={none}
+            onClick={() => {
+              onChange('')
+              setShowCustom(false)
+            }}
+            className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs transition-colors duration-state ${
+              none
+                ? 'border-brand-primary ring-1 ring-brand-primary'
+                : 'border-hairline hover:bg-hairline-soft'
+            }`}
+          >
+            <span className="h-5 w-5 shrink-0 rounded border border-dashed border-hairline bg-surface" />
+            <span className="font-medium text-brand-ink">Inherit</span>
+          </button>
+        )}
+        {allowTransparent && (
+          <button
+            type="button"
+            aria-pressed={isTransparent}
+            onClick={() => {
+              onChange('transparent')
+              setShowCustom(false)
+            }}
+            className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs transition-colors duration-state ${
+              isTransparent
+                ? 'border-brand-primary ring-1 ring-brand-primary'
+                : 'border-hairline hover:bg-hairline-soft'
+            }`}
+          >
+            <span className="h-5 w-5 shrink-0 rounded border border-dashed border-hairline bg-[linear-gradient(45deg,#e5e7eb_25%,transparent_25%,transparent_75%,#e5e7eb_75%),linear-gradient(45deg,#e5e7eb_25%,#fff_25%,#fff_75%,#e5e7eb_75%)] bg-[length:10px_10px] bg-[position:0_0,5px_5px]" />
+            <span className="font-medium text-brand-ink">None</span>
+          </button>
+        )}
+        {options.map((option) => {
+          const active = selected?.token === option.token
           return (
             <button
-              key={key}
+              key={option.token}
               type="button"
+              aria-pressed={active}
               onClick={() => {
-                onChange(hex)
+                onChange(option.token)
                 setShowCustom(false)
               }}
               className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs transition-colors duration-state ${
-                selected
+                active
                   ? 'border-brand-primary ring-1 ring-brand-primary'
                   : 'border-hairline hover:bg-hairline-soft'
               }`}
             >
               <span
                 className="h-5 w-5 shrink-0 rounded border border-hairline"
-                style={{ backgroundColor: hex }}
+                style={{ backgroundColor: option.hex }}
               />
-              <span className="font-medium text-brand-ink">{DS_COLOR_LABELS[key] ?? key}</span>
+              <span className="font-medium text-brand-ink">{option.label}</span>
             </button>
           )
         })}
         <button
           type="button"
-          onClick={() => setShowCustom(true)}
+          onClick={() => {
+            setShowCustom(true)
+            if (!isCustom) onChange(selected?.hex ?? customHex)
+          }}
+          aria-pressed={showCustom || isCustom}
           className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs transition-colors duration-state ${
-            showCustom || (!isDesignSystemColor && value)
+            showCustom || isCustom
               ? 'border-brand-primary ring-1 ring-brand-primary'
               : 'border-hairline hover:bg-hairline-soft'
           }`}
@@ -206,34 +268,25 @@ function TypeDefaultHexcode({
           <span className="font-medium text-brand-ink">Custom</span>
         </button>
       </div>
-      {(showCustom || (!isDesignSystemColor && value)) && (
+      {(showCustom || isCustom) && (
         <div className="flex items-center gap-2">
           <input
             type="text"
-            value={value}
+            value={isCustom ? value : customHex}
             onChange={(e) => onChange(e.target.value)}
             placeholder="#000000"
-            className="w-32 rounded-control border border-hairline px-3 py-2 font-mono text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+            className="w-32 rounded-control border-hairline px-3 py-2 font-mono text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
           />
           <button
             type="button"
             onClick={() => pickerRef.current?.click()}
             className="relative h-10 w-10 shrink-0 cursor-pointer overflow-hidden rounded-control border border-hairline"
-            style={{
-              backgroundColor:
-                (value ?? '').match(/^#?[0-9a-fA-F]{6}$/)
-                  ? value.startsWith('#') ? value : `#${value}`
-                  : '#000000',
-            }}
+            style={{ backgroundColor: swatch }}
           >
             <input
               ref={pickerRef}
               type="color"
-              value={
-                (value ?? '').match(/^#?[0-9a-fA-F]{6}$/)
-                  ? value.startsWith('#') ? value : `#${value}`
-                  : '#000000'
-              }
+              value={swatch.length === 7 ? swatch : '#000000'}
               onChange={(e) => onChange(e.target.value)}
               className="absolute inset-0 cursor-pointer opacity-0"
             />
@@ -242,16 +295,64 @@ function TypeDefaultHexcode({
       )}
       {value && (
         <div
-          className="mt-1 flex h-8 w-full max-w-xs items-center justify-center rounded-control text-xs font-mono"
-          style={{
-            backgroundColor: value.startsWith('#') ? value : `#${value}`,
-            color: contrastText(value.startsWith('#') ? value : `#${value}`),
-          }}
+          className="mt-1 flex h-8 w-full max-w-xs items-center justify-center rounded-control font-mono text-xs"
+          style={{ backgroundColor: swatch, color: contrastText(swatch) }}
         >
           {value}
         </div>
       )}
     </div>
+  )
+}
+
+function TypeDefaultHexcode({
+  value,
+  onChange,
+  allowTransparent,
+}: {
+  value: string
+  onChange: (v: string) => void
+  allowTransparent?: boolean
+}) {
+  const space = useSpace()
+  const { draft, published, loading } = useBrandTokens(space)
+  const { tokens: chrome } = useDesignTokens()
+  const brandOptions = colorRoleOptions(draft ?? published)
+  const options = brandOptions.length > 0 ? brandOptions : chromeRoleOptions(chrome.colors)
+  return (
+    <ColorTokenPicker
+      label="Default value"
+      value={value}
+      onChange={onChange}
+      options={options}
+      loading={loading}
+      allowTransparent={allowTransparent}
+    />
+  )
+}
+
+function TypeTextColor({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  const space = useSpace()
+  const { draft, published, loading } = useBrandTokens(space)
+  const { tokens: chrome } = useDesignTokens()
+  const textOptions = textColorOptions(draft ?? published)
+  const options = textOptions.length > 0 ? textOptions : chromeRoleOptions(chrome.colors)
+  return (
+    <ColorTokenPicker
+      label="Text color"
+      value={value}
+      onChange={onChange}
+      options={options}
+      loading={loading}
+      emptyHint="No text roles in this space yet. Publish a design system or use Custom."
+      allowNone
+    />
   )
 }
 
@@ -359,7 +460,7 @@ export function VariableEditSheet({
                     })
                   }}
                   placeholder="e.g. Hero Headline"
-                  className="rounded-control border border-hairline px-3 py-2 text-sm font-medium text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="rounded-control border-hairline px-3 py-2 text-sm font-medium text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -373,7 +474,7 @@ export function VariableEditSheet({
                     updateVariable({ key: toSlug(e.target.value) || e.target.value })
                   }
                   placeholder="e.g. hero_headline"
-                  className="rounded-control border border-hairline px-3 py-2 text-sm font-mono text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="rounded-control border-hairline px-3 py-2 text-sm font-mono text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </label>
             </div>
@@ -443,7 +544,7 @@ export function VariableEditSheet({
                               key: toSlug(label) || f.key,
                             })
                           }}
-                          className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                          className="rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                         />
                       </label>
                       <label className="flex flex-col gap-1">
@@ -456,23 +557,22 @@ export function VariableEditSheet({
                           onChange={(e) =>
                             updateField(idx, { key: toSlug(e.target.value) || e.target.value })
                           }
-                          className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                          className="rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                         />
                       </label>
                       <label className="flex flex-col gap-1">
                         <span className="text-xs font-medium text-text-muted">
                           Type
                         </span>
-                        <div className="relative">
-                          <select
-                            value={f.type}
-                            onChange={(e) =>
-                              updateField(idx, {
-                                type: e.target.value as CmsComponentVariableType | '',
-                              })
-                            }
-                            className="w-full appearance-none rounded-control border border-hairline bg-surface pr-9 pl-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                          >
+                        <select
+                          value={f.type}
+                          onChange={(e) =>
+                            updateField(idx, {
+                              type: e.target.value as CmsComponentVariableType | '',
+                            })
+                          }
+                          className="w-full rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
+                        >
                           <option value="">- Pick Item -</option>
                           {VARIABLE_TYPES.map((t) => (
                             <option key={t} value={t}>
@@ -485,15 +585,11 @@ export function VariableEditSheet({
                                     : t.charAt(0).toUpperCase() + t.slice(1)}
                             </option>
                           ))}
-                          </select>
-                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-subtle">
-                            <ChevronDown className="h-4 w-4" />
-                          </div>
-                        </div>
+                        </select>
                       </label>
                     </div>
                     {f.type && (
-                      <div className="w-fit">
+                      <div className="flex w-full flex-col gap-4">
                         {f.type === 'text' && (
                           <label className="flex w-fit flex-col gap-1">
                             <span className="text-xs font-medium text-text-muted">
@@ -505,7 +601,7 @@ export function VariableEditSheet({
                               onChange={(e) =>
                                 updateField(idx, { defaultValue: e.target.value })
                               }
-                              className="min-w-[200px] max-w-md rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                              className="min-w-[200px] max-w-md rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                             />
                           </label>
                         )}
@@ -520,14 +616,23 @@ export function VariableEditSheet({
                               onChange={(e) =>
                                 updateField(idx, { defaultValue: e.target.value })
                               }
-                              className="min-w-[200px] max-w-lg rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                              className="min-w-[200px] max-w-lg rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                             />
                           </label>
+                        )}
+                        {fieldUsesTextColor(f) && (
+                          <TypeTextColor
+                            value={f.color ?? ''}
+                            onChange={(color) =>
+                              updateField(idx, { color: color || undefined })
+                            }
+                          />
                         )}
                         {f.type === 'hexcode' && (
                           <TypeDefaultHexcode
                             value={f.defaultValue ?? ''}
                             onChange={(v) => updateField(idx, { defaultValue: v })}
+                            allowTransparent={/background|bg_/.test(f.key)}
                           />
                         )}
                         {f.type === 'url' && (
@@ -541,7 +646,7 @@ export function VariableEditSheet({
                               onChange={(e) =>
                                 updateField(idx, { defaultValue: e.target.value })
                               }
-                              className="min-w-[200px] max-w-md rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                              className="min-w-[200px] max-w-md rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                             />
                           </label>
                         )}

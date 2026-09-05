@@ -135,7 +135,7 @@ export function AccountSheet({ user, open, onClose, onProfileChange }: AccountSh
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
-                className="min-w-0 flex-1 rounded-control border border-hairline px-3 py-2 text-sm text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="min-w-0 flex-1 rounded-control border-hairline px-3 py-2 text-sm text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               />
               <button
                 type="button"

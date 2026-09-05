@@ -4,6 +4,21 @@ import type { CmsComponent, CmsSpace } from '@/types/cms'
 import { spaceCollection, spaceDoc } from '@/lib/firestore-paths'
 
 const SUB = 'components'
+const ORDER_DOC_ID = '_order'
+
+function sortByOrder<T extends { id: string }>(list: T[], order: string[]): T[] {
+  const byId = new Map(list.map((c) => [c.id, c]))
+  const ordered: T[] = []
+  for (const id of order) {
+    const c = byId.get(id)
+    if (c) {
+      ordered.push(c)
+      byId.delete(id)
+    }
+  }
+  ordered.push(...byId.values())
+  return ordered
+}
 
 /** Firestore rejects undefined; strip it from objects before saving */
 function stripUndefined<T>(obj: T): T {
@@ -34,12 +49,18 @@ export function useCmsComponents(space: CmsSpace) {
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, error: null }))
     try {
-      const snap = await getDocs(spaceCollection(space, SUB))
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<CmsComponent, 'id'>),
-      }))
-      setState({ components: list, error: null })
+      const [snap, orderSnap] = await Promise.all([
+        getDocs(spaceCollection(space, SUB)),
+        getDoc(spaceDoc(space, SUB, ORDER_DOC_ID)),
+      ])
+      const list = snap.docs
+        .filter((d) => d.id !== ORDER_DOC_ID)
+        .map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<CmsComponent, 'id'>),
+        }))
+      const order = (orderSnap.data()?.ids as string[] | undefined) ?? []
+      setState({ components: sortByOrder(list, order), error: null })
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
       setState({ components: [], error })
@@ -60,6 +81,8 @@ export function useCmsComponents(space: CmsSpace) {
         updatedBy: userEmail,
       }
       await setDoc(spaceDoc(space, SUB, id), stripUndefined(component))
+      const ids = [...state.components.map((c) => c.id), id]
+      await setDoc(spaceDoc(space, SUB, ORDER_DOC_ID), { ids })
       setState((s) => ({
         ...s,
         components: [...s.components, component],
@@ -67,7 +90,7 @@ export function useCmsComponents(space: CmsSpace) {
       }))
       return id
     },
-    [space],
+    [space, state.components],
   )
 
   const updateComponent = useCallback(
@@ -97,12 +120,30 @@ export function useCmsComponents(space: CmsSpace) {
 
   const deleteComponent = useCallback(async (id: string) => {
     await deleteDoc(spaceDoc(space, SUB, id))
+    const ids = state.components.filter((c) => c.id !== id).map((c) => c.id)
+    await setDoc(spaceDoc(space, SUB, ORDER_DOC_ID), { ids })
     setState((s) => ({
       ...s,
       components: s.components.filter((c) => c.id !== id),
       error: null,
     }))
-  }, [space])
+  }, [space, state.components])
+
+  const reorder = useCallback(async (ids: string[]) => {
+    setState((s) => ({
+      ...s,
+      components: sortByOrder(s.components, ids),
+      error: null,
+    }))
+    try {
+      await setDoc(spaceDoc(space, SUB, ORDER_DOC_ID), { ids })
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      setState((s) => ({ ...s, error }))
+      await refresh()
+      throw err
+    }
+  }, [space, refresh])
 
   const getComponent = useCallback(
     async (id: string): Promise<CmsComponent | null> => {
@@ -127,6 +168,7 @@ export function useCmsComponents(space: CmsSpace) {
     createComponent,
     updateComponent,
     deleteComponent,
+    reorder,
     getComponent,
     error: state.error,
   }

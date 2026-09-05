@@ -19,6 +19,8 @@ export type CmsAssetType =
   | 'font'
   | 'avatar'
   | 'logo'
+  | 'logo-light'
+  | 'logo-dark'
   | 'favicon'
 
 export async function uploadCmsAsset(

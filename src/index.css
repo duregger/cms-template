@@ -39,6 +39,16 @@ html {
   --cms-danger-strong: #b91c1c;
   --cms-danger-tint: #fef2f2;
 
+  /* Container elevation — primary-tinted ring + lift, not a grey hairline */
+  --shadow-border:
+    0px 0px 0px 1px color-mix(in srgb, var(--brand-primary) 55%, var(--cms-surface)),
+    0px 1px 2px -1px color-mix(in srgb, var(--brand-ink) 10%, transparent),
+    0px 2px 4px 0px color-mix(in srgb, var(--brand-ink) 6%, transparent);
+  --shadow-border-hover:
+    0px 0px 0px 1px color-mix(in srgb, var(--brand-primary) 70%, var(--cms-surface)),
+    0px 1px 2px -1px color-mix(in srgb, var(--brand-ink) 12%, transparent),
+    0px 2px 4px 0px color-mix(in srgb, var(--brand-ink) 8%, transparent);
+
   /* Motion */
   --cms-ease-panel: cubic-bezier(0.2, 0.7, 0.2, 1);
 
@@ -54,6 +64,28 @@ html {
   --btn-primary-text: var(--brand-cloud);
   --btn-secondary-bg: var(--brand-ink);
   --btn-secondary-text: var(--brand-cloud);
+
+  /* Form controls — text pad and select chevron share the same inset */
+  --control-pad-x: 12px;
+  --control-icon: 16px;
+  --select-icon-inset: var(--control-pad-x);
+  --select-end-pad: calc(var(--select-icon-inset) + var(--control-icon) + var(--select-icon-inset));
+}
+
+/* Unlayered so it wins over utility `px-3` on native selects. */
+select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-inline-end: var(--select-end-pad);
+  background-color: var(--cms-surface);
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 16 16'%3E%3Cpath stroke='%231a1814' stroke-opacity='.42' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--select-icon-inset) center;
+  background-size: var(--control-icon);
+}
+
+select:not([multiple])::-ms-expand {
+  display: none;
 }
 
 /* Metallophile Sp8 */

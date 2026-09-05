@@ -1,23 +1,32 @@
-import { useState, useRef } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { NavLink, Outlet } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { useCmsPagesContext } from '@/contexts/CmsPagesContext'
 import { useCmsComponentsContext } from '@/contexts/CmsComponentsContext'
 import { useSpace } from '@/contexts/SpaceContext'
-import { CMS_SPACES, CMS_NOTIFICATION_CATEGORIES } from '@/types/cms'
-import type { CmsSpace } from '@/types/cms'
+import { CMS_NOTIFICATION_CATEGORIES } from '@/types/cms'
+import type { CmsComponent, CmsSpace } from '@/types/cms'
+import { SpaceSwitcher } from '@/components/SpaceSwitcher'
 import type { CmsSidebarSection } from '@/hooks/useCmsPages'
 import { AccountSheet, initials, type ProfilePatch } from '@/components/AccountSheet'
+import { useProjectSettings } from '@/hooks/useProjectSettings'
+import { resolveClientLogos } from '@/types/settings'
 import { CMS_NAME } from '@/lib/brand'
+import { pageDisplayName } from '@/lib/page-name'
+import { publishSpacePages } from '@/lib/publish-space'
+import { GripVertical } from '@/components/icons/GripVertical'
 
-function pageDisplayName(slug: string): string {
-  return slug
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
-
-function PageLink({ slug, space, size = 'md' }: { slug: string; space: CmsSpace; size?: 'md' | 'sm' }) {
+function PageLink({
+  slug,
+  title,
+  space,
+  size = 'md',
+}: {
+  slug: string
+  title?: string
+  space: CmsSpace
+  size?: 'md' | 'sm'
+}) {
   return (
     <NavLink
       to={`/${space}/pages/${slug}`}
@@ -29,31 +38,128 @@ function PageLink({ slug, space, size = 'md' }: { slug: string; space: CmsSpace;
         }`
       }
     >
-      {pageDisplayName(slug)}
+      {pageDisplayName(slug, title)}
     </NavLink>
   )
 }
 
-function SpaceSwitcher({ activeSpace }: { activeSpace: CmsSpace }) {
-  const navigate = useNavigate()
+function insertRelative(ids: string[], fromId: string, targetId: string, before: boolean) {
+  if (fromId === targetId) return ids
+  const next = ids.filter((id) => id !== fromId)
+  const targetIndex = next.indexOf(targetId)
+  if (targetIndex < 0) return ids
+  next.splice(before ? targetIndex : targetIndex + 1, 0, fromId)
+  return next
+}
+
+function ComponentNavList({
+  space,
+  components,
+  onReorder,
+}: {
+  space: CmsSpace
+  components: CmsComponent[]
+  onReorder: (ids: string[]) => Promise<void>
+}) {
+  const draggingId = useRef<string | null>(null)
+  const [dropAt, setDropAt] = useState<{ id: string; before: boolean } | null>(null)
+  const ids = components.map((c) => c.id)
+
+  const commit = (next: string[]) => {
+    if (next.length !== ids.length || next.every((id, i) => id === ids[i])) return
+    void onReorder(next)
+  }
+
+  const moveBy = (id: string, delta: number) => {
+    const i = ids.indexOf(id)
+    const j = i + delta
+    if (i < 0 || j < 0 || j >= ids.length) return
+    const item = ids[i]
+    if (!item) return
+    const next = [...ids]
+    next.splice(i, 1)
+    next.splice(j, 0, item)
+    commit(next)
+  }
 
   return (
-    <div className="flex gap-0.5 rounded-control bg-hairline-soft p-0.5">
-      {CMS_SPACES.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          onClick={() => navigate(`/${s.id}`)}
-          className={`flex-1 rounded-control px-2 py-1.5 text-[11px] font-medium transition ${
-            activeSpace === s.id
-              ? 'bg-surface text-brand-primary shadow-card'
-              : 'text-text-muted hover:text-brand-ink'
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
+    <ul className="space-y-0.5">
+      {components.map((c) => {
+        const label = c.displayName || c.name
+        return (
+          <li
+            key={c.id}
+            className="relative flex items-center"
+            onDragOver={(e) => {
+              if (!draggingId.current) return
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'move'
+              const rect = e.currentTarget.getBoundingClientRect()
+              setDropAt({ id: c.id, before: e.clientY < rect.top + rect.height / 2 })
+            }}
+            onDragLeave={(e) => {
+              const related = e.relatedTarget
+              if (related instanceof Node && e.currentTarget.contains(related)) return
+              setDropAt((cur) => (cur?.id === c.id ? null : cur))
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              const from = draggingId.current
+              const at = dropAt
+              draggingId.current = null
+              setDropAt(null)
+              if (!from) return
+              commit(insertRelative(ids, from, c.id, at?.id === c.id ? at.before : true))
+            }}
+          >
+            {dropAt?.id === c.id && dropAt.before && (
+              <span className="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded-full bg-brand-primary" />
+            )}
+            {dropAt?.id === c.id && !dropAt.before && (
+              <span className="pointer-events-none absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-primary" />
+            )}
+            <button
+              type="button"
+              draggable
+              aria-label={`Reorder ${label}`}
+              title="Drag to reorder, or use arrow keys"
+              onDragStart={(e) => {
+                draggingId.current = c.id
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', c.id)
+              }}
+              onDragEnd={() => {
+                draggingId.current = null
+                setDropAt(null)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  moveBy(c.id, -1)
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  moveBy(c.id, 1)
+                }
+              }}
+              className="shrink-0 cursor-grab rounded p-1.5 text-text-subtle transition-colors duration-state hover:bg-hairline-soft hover:text-brand-ink active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+            <NavLink
+              to={`/${space}/components/${c.id}`}
+              draggable={false}
+              className={({ isActive }) =>
+                `min-w-0 flex-1 rounded-control px-2 py-2 text-sm font-medium transition-colors duration-state hover:bg-brand-hover ${
+                  isActive ? 'bg-brand-rest text-brand-ink-on-tint' : 'text-brand-ink'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -119,6 +225,9 @@ function AlertsSidebar({ space }: { space: CmsSpace }) {
 export function CmsLayout({ user }: { user: User }) {
   const space = useSpace()
   const isAlerts = space === 'alerts'
+  const { settings } = useProjectSettings()
+  const sidebarTitle = settings?.brandName?.trim() || 'Curbside'
+  const { dark: darkLogo } = resolveClientLogos(settings)
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -126,7 +235,7 @@ export function CmsLayout({ user }: { user: User }) {
   const [showAddSection, setShowAddSection] = useState(false)
   const [manageSections, setManageSections] = useState(false)
   const { pages, sections, saveSections, error } = useCmsPagesContext()
-  const { components } = useCmsComponentsContext()
+  const { components, reorder: reorderComponents } = useCmsComponentsContext()
   const draggingSlug = useRef<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
 
@@ -137,6 +246,29 @@ export function CmsLayout({ user }: { user: User }) {
   })
   const displayUser = { ...user, ...profile } as User
   const handleProfileChange = (patch: ProfilePatch) => setProfile((prev) => ({ ...prev, ...patch }))
+  const [publishing, setPublishing] = useState(false)
+  const [publishNote, setPublishNote] = useState<{ text: string; error?: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!publishNote) return
+    const t = setTimeout(() => setPublishNote(null), 3500)
+    return () => clearTimeout(t)
+  }, [publishNote])
+
+  const handlePublish = async () => {
+    setPublishing(true)
+    setPublishNote(null)
+    try {
+      const entry = await publishSpacePages(space, user.email ?? undefined)
+      const who = entry.publishedBy ?? 'Unknown'
+      setPublishNote({ text: `Published ${entry.pageCount} pages · ${who}` })
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Publish failed'
+      setPublishNote({ text, error: true })
+    } finally {
+      setPublishing(false)
+    }
+  }
 
   const childrenOf = (parentSlug: string) =>
     pages.filter((p) => p.parentSlug === parentSlug)
@@ -240,6 +372,7 @@ export function CmsLayout({ user }: { user: User }) {
   }
 
   const renderPageWithChildren = (slug: string, size: 'md' | 'sm' = 'md') => {
+    const page = pages.find((p) => p.slug === slug)
     const children = childrenOf(slug)
     if (children.length === 0) {
       return (
@@ -250,7 +383,7 @@ export function CmsLayout({ user }: { user: User }) {
           onDragStart={handleDragStart(slug)}
           onDragEnd={handleDragEnd}
         >
-          <PageLink slug={slug} space={space} size={size} />
+          <PageLink slug={slug} title={page?.title} space={space} size={size} />
         </li>
       )
     }
@@ -277,13 +410,13 @@ export function CmsLayout({ user }: { user: User }) {
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
-          <PageLink slug={slug} space={space} size={size} />
+          <PageLink slug={slug} title={page?.title} space={space} size={size} />
         </div>
         {isExp && (
           <ul className="ml-5 space-y-0.5 border-l border-hairline pl-1">
             {children.map((child) => (
               <li key={child.slug} className="flex items-center">
-                <PageLink slug={child.slug} space={space} size="sm" />
+                <PageLink slug={child.slug} title={child.title} space={space} size="sm" />
               </li>
             ))}
           </ul>
@@ -299,13 +432,23 @@ export function CmsLayout({ user }: { user: User }) {
           sidebarOpen ? 'w-56' : 'w-14'
         }`}
       >
-        <div className="flex h-14 items-center justify-between border-b border-hairline px-3">
+        <div className="flex h-14 shrink-0 items-center justify-between overflow-hidden border-b border-hairline px-3">
           {sidebarOpen && (
-            <span className="font-label text-sm text-brand-ink">CMS</span>
+            <div className="flex h-9 min-w-0 flex-1 items-center overflow-hidden pr-2">
+              {darkLogo ? (
+                <img
+                  src={darkLogo}
+                  alt={sidebarTitle}
+                  className="h-9 w-auto max-h-9 max-w-full object-contain object-left"
+                />
+              ) : (
+                <span className="truncate font-label text-sm text-brand-ink">{sidebarTitle}</span>
+              )}
+            </div>
           )}
           <button
             onClick={() => setSidebarOpen((o) => !o)}
-            className="rounded p-2 text-text-muted transition hover:bg-hairline-soft hover:text-brand-ink"
+            className="shrink-0 rounded p-2 text-text-muted transition hover:bg-hairline-soft hover:text-brand-ink"
             title={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
           >
             <svg
@@ -328,7 +471,7 @@ export function CmsLayout({ user }: { user: User }) {
             <div className="px-2">
               {/* Space Switcher */}
               <div className="mb-4">
-                <SpaceSwitcher activeSpace={space} />
+                <SpaceSwitcher activeSpace={space} user={user} />
               </div>
 
               {isAlerts ? (
@@ -396,7 +539,7 @@ export function CmsLayout({ user }: { user: User }) {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                               }}
-                              className="min-w-0 flex-1 rounded border border-hairline bg-surface px-1 py-0.5 text-xs font-medium uppercase tracking-wider text-text-muted focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                              className="min-w-0 flex-1 rounded border-hairline bg-surface px-1 py-0.5 text-xs font-medium uppercase tracking-wider text-text-muted border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                             />
                           ) : (
                             <span className="min-w-0 flex-1 text-left">{section.name}</span>
@@ -447,12 +590,12 @@ export function CmsLayout({ user }: { user: User }) {
                             onChange={(e) => {
                               if (e.target.value) addPageToSection(section.id, e.target.value)
                             }}
-                            className="mt-1 ml-2 w-[calc(100%-8px)] rounded border border-dashed border-hairline bg-surface px-2 py-1 text-xs text-text-muted focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                            className="mt-1 ml-2 w-[calc(100%-8px)] rounded border border-dashed border-hairline bg-surface px-2 py-1 text-xs text-text-muted border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                           >
                             <option value="">+ Add page...</option>
                             {unsectionedPages.map((p) => (
                               <option key={p.slug} value={p.slug}>
-                                {pageDisplayName(p.slug)}
+                                {pageDisplayName(p.slug, p.title)}
                               </option>
                             ))}
                           </select>
@@ -471,7 +614,7 @@ export function CmsLayout({ user }: { user: User }) {
                           onChange={(e) => setAddingSectionName(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addSection()}
                           placeholder="Section name"
-                          className="min-w-0 flex-1 rounded border border-hairline px-2 py-1 text-xs focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                          className="min-w-0 flex-1 rounded border-hairline px-2 py-1 text-xs border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                           autoFocus
                         />
                         <button
@@ -530,22 +673,11 @@ export function CmsLayout({ user }: { user: User }) {
                   <div className="mb-2 mt-6 px-2 text-xs font-medium uppercase tracking-wider text-text-muted">
                     Components
                   </div>
-                  <ul className="space-y-0.5">
-                    {components.map((c) => (
-                      <li key={c.id}>
-                        <NavLink
-                          to={`/${space}/components/${c.id}`}
-                          className={({ isActive }) =>
-                            `block rounded-control px-3 py-2 text-sm font-medium transition-colors duration-state hover:bg-brand-hover ${
-                              isActive ? 'bg-brand-rest text-brand-ink-on-tint' : 'text-brand-ink'
-                            }`
-                          }
-                        >
-                          {c.displayName || c.name}
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
+                  <ComponentNavList
+                    space={space}
+                    components={components}
+                    onReorder={reorderComponents}
+                  />
                   <NavLink
                     to={`/${space}/components`}
                     end
@@ -617,10 +749,34 @@ export function CmsLayout({ user }: { user: User }) {
       </aside>
 
       <div className="flex flex-1 flex-col min-w-0">
-        <header className="sticky top-0 z-40 flex items-center justify-between border-b border-hairline bg-surface px-6 py-3">
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-hairline bg-surface px-6">
           <span className="font-label text-sm text-brand-ink">
-            {CMS_NAME}
+            {sidebarTitle} {CMS_NAME}
           </span>
+          <div className="flex items-center gap-3">
+            {publishNote ? (
+              <span
+                className={`text-xs font-medium ${publishNote.error ? 'text-danger' : 'text-brand-success'}`}
+                role="status"
+              >
+                {publishNote.text}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              title="Preview is not connected yet"
+              className="rounded-pill border border-hairline px-4 py-1.5 text-xs font-medium text-text-muted transition-colors duration-state hover:bg-hairline-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={publishing}
+              className="rounded-control bg-brand-primary px-5 py-1.5 font-button text-xs text-brand-on shadow-button transition-colors duration-state hover:bg-brand-wash hover:text-brand-ink-on-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1 disabled:opacity-50"
+            >
+              {publishing ? 'Publishing…' : 'Publish'}
+            </button>
           <button
             type="button"
             onClick={() => setAccountOpen(true)}
@@ -639,6 +795,7 @@ export function CmsLayout({ user }: { user: User }) {
               </span>
             )}
           </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto bg-surface">

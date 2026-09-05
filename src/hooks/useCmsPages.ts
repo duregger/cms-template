@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getDoc, getDocs, setDoc } from 'firebase/firestore'
+import { auth } from '@/lib/firebase'
 import type { CmsPage, CmsSpace } from '@/types/cms'
 import { spaceCollection, spaceDoc } from '@/lib/firestore-paths'
+import { seedMissingCurbsidePages } from '@/lib/curbside-pages'
 
 export type CmsPageSummary = {
   slug: string
+  title?: string
   parentSlug?: string
   updatedAt?: number
 }
@@ -48,6 +51,12 @@ export function useCmsPages(space: CmsSpace) {
     error: null,
   })
 
+  const seeded = useRef(false)
+
+  useEffect(() => {
+    seeded.current = false
+  }, [space])
+
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, error: null }))
     try {
@@ -62,6 +71,7 @@ export function useCmsPages(space: CmsSpace) {
           const data = d.data() as CmsPage
           return {
             slug: d.id,
+            title: data.title,
             parentSlug: data.parentSlug,
             updatedAt: data.updatedAt,
           }
@@ -69,6 +79,24 @@ export function useCmsPages(space: CmsSpace) {
       const order = (orderSnap.data()?.slugs as string[] | undefined) ?? []
       const sorted = sortByOrder(list, order)
       const sections = (sectionsSnap.data()?.sections as CmsSidebarSection[] | undefined) ?? []
+
+      if (space === 'web' && !seeded.current) {
+        seeded.current = true
+        try {
+          const created = await seedMissingCurbsidePages(
+            space,
+            list.map((p) => p.slug),
+            auth.currentUser?.email ?? undefined,
+          )
+          if (created.length > 0) {
+            await refresh()
+            return
+          }
+        } catch (seedErr) {
+          console.error('[useCmsPages] Site page seed failed', seedErr)
+        }
+      }
+
       setState({ pages: sorted, sections, error: null })
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))

@@ -3,36 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { useCmsComponentsContext } from '@/contexts/CmsComponentsContext'
 import { useSpace } from '@/contexts/SpaceContext'
 import type { User } from 'firebase/auth'
-import type { CmsComponentVariable, CmsVariableField } from '@/types/cms'
+import { defaultContentBlockVariables } from '@/lib/content-block-variables'
+import { defaultHeroSliderVariables } from '@/lib/hero-slider-variables'
+import type { CmsComponentVariable } from '@/types/cms'
 
-function heroField(id: string, key: string, label: string, type: CmsVariableField['type']): CmsVariableField {
-  return { id, key, label, type }
+function defaultVariablesForName(name: string): CmsComponentVariable[] {
+  const slug = name.toLowerCase().replace(/[\s-]+/g, '_')
+  if (slug.startsWith('hero')) return defaultHeroSliderVariables()
+  if (slug.startsWith('content_block') || slug.startsWith('contentblock')) {
+    return defaultContentBlockVariables()
+  }
+  return []
 }
-
-export const DEFAULT_HERO_VARIABLES: CmsComponentVariable[] = [
-  {
-    id: 'var1',
-    key: 'hero-content',
-    label: 'Hero Content',
-    hidden: false,
-    fields: [
-      heroField('v1', 'headline', 'Headline', 'text'),
-      heroField('v2', 'subheader', 'Subheader', 'text'),
-      heroField('v3', 'h2', 'H2', 'text'),
-      heroField('v4', 'background_color', 'Background Color', 'hexcode'),
-      heroField('v5', 'image', 'Image', 'image'),
-      heroField('v6', 'paper_tear', 'Paper Tear', 'image'),
-      heroField('v7', 'button_text', 'Button Text', 'text'),
-      heroField('v8', 'button_url', 'Button Link', 'url'),
-      heroField('v9', 'layout', 'Layout', 'text'),
-      heroField('v10', 'text_alignment', 'Text Alignment', 'text'),
-      heroField('v11', 'button_color', 'Button Color', 'hexcode'),
-      heroField('v12', 'headline_color', 'Headline Color', 'hexcode'),
-      heroField('v13', 'subheader_color', 'Subheader Color', 'hexcode'),
-      heroField('v14', 'h2_color', 'H2 Color', 'hexcode'),
-    ],
-  },
-]
 
 export function CmsComponentsList({ user }: { user: User }) {
   const navigate = useNavigate()
@@ -60,7 +42,7 @@ export function CmsComponentsList({ user }: { user: User }) {
     setError(null)
     setCreating(true)
     try {
-      const variables: CmsComponentVariable[] = []
+      const variables = defaultVariablesForName(n)
       const id = await createComponent(
         {
           name: n,
@@ -88,7 +70,7 @@ export function CmsComponentsList({ user }: { user: User }) {
 
       <form
         onSubmit={handleCreate}
-        className="rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel"
+        className="rounded-panel bg-surface p-6 shadow-panel"
       >
         {error && (
           <p className="mb-4 rounded-control bg-danger-tint px-4 py-2 font-body text-sm text-danger-strong">
@@ -107,7 +89,7 @@ export function CmsComponentsList({ user }: { user: User }) {
               setError(null)
             }}
             placeholder="e.g. Rio Red Tear"
-            className="w-full rounded-control border border-hairline px-4 py-2 font-body text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+            className="w-full rounded-control border-hairline px-4 py-2 font-body text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
             autoComplete="off"
           />
           {displayName.trim() && (

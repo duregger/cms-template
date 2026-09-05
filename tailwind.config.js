@@ -73,11 +73,8 @@ export default {
         shell: '0 1px 2px rgba(22, 28, 34, 0.04), 0 8px 24px rgba(22, 28, 34, 0.06)',
         overlay: '0 1px 2px rgba(22, 28, 34, 0.05), 0 8px 20px rgba(22, 28, 34, 0.09)',
         button: '0 1px 2px rgba(22, 28, 34, 0.10)',
-        // double outline: edge hairline, 4px surface mat, second hairline
-        mat: 'inset 0 0 0 4px var(--cms-surface, #fbfcfd), inset 0 0 0 5px rgba(26, 24, 20, 0.10)',
-        // "Mat panel" — any container that groups content: the mat double-outline
-        // plus the card lift shadow, combined into one applyable box-shadow.
-        panel: 'inset 0 0 0 4px var(--cms-surface, #fbfcfd), inset 0 0 0 5px rgba(26, 24, 20, 0.10), 0 1px 2px rgba(22, 28, 34, 0.035)',
+        panel: 'var(--shadow-border)',
+        'panel-hover': 'var(--shadow-border-hover)',
       },
       transitionDuration: {
         state: '170ms',

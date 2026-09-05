@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { setDoc } from 'firebase/firestore'
 import type { User } from 'firebase/auth'
-import { ADMIN_DOMAINS, CMS_NAME, CMS_SHORT_NAME, escapeRulesDomain } from '@/lib/brand'
+import { ADMIN_DOMAINS, CMS_SHORT_NAME, escapeRulesDomain } from '@/lib/brand'
 import { uploadCmsAsset } from '@/lib/storage'
 import { PROJECT_SETTINGS_REF } from '@/hooks/useProjectSettings'
 import { Button } from '@/components/Button'
-import { EMPTY_PROJECT_SETTINGS, type ProjectSettings } from '@/types/settings'
+import {
+  EMPTY_PROJECT_SETTINGS,
+  hasClientLogo,
+  type ProjectSettings,
+} from '@/types/settings'
 
 const STEPS = [
   { id: 'brand', label: 'Brand' },
@@ -35,7 +39,7 @@ function Field({
 }
 
 const inputClass =
-  'rounded-control border border-hairline bg-surface px-3 py-2 text-sm text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1'
+  'rounded-control border-hairline bg-surface px-3 py-2 text-sm text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0'
 
 function Snippet({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false)
@@ -71,31 +75,55 @@ function Snippet({ label, value }: { label: string; value: string }) {
 
 function FilePicker({
   label,
+  hint,
   accept,
   previewUrl,
+  previewSurface = 'light',
   onFile,
 }: {
   label: string
+  hint?: string
   accept: string
   previewUrl?: string
+  previewSurface?: 'light' | 'dark'
   onFile: (file: File) => Promise<void>
 }) {
   const [busy, setBusy] = useState(false)
+  const id = useId()
+  const hintId = hint ? `${id}-hint` : undefined
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-text-muted">{label}</span>
-      {previewUrl && (
-        <img
-          src={previewUrl}
-          alt=""
-          className="h-12 w-auto max-w-[180px] object-contain"
-        />
+      <label htmlFor={id} className="text-xs font-medium text-text-muted">
+        {label}
+      </label>
+      {hint && (
+        <p id={hintId} className="text-xs text-text-subtle">
+          {hint}
+        </p>
       )}
+      <div
+        className={`flex h-20 items-center justify-center rounded-control px-4 ${
+          previewSurface === 'dark'
+            ? 'bg-brand-ink outline outline-1 outline-white/10'
+            : 'bg-hairline-soft outline outline-1 outline-black/10'
+        }`}
+      >
+        {previewUrl ? (
+          <img src={previewUrl} alt="" className="h-10 w-auto max-w-full object-contain" />
+        ) : (
+          <span className={`text-xs ${previewSurface === 'dark' ? 'text-white/40' : 'text-text-subtle'}`}>
+            SVG or PNG
+          </span>
+        )}
+      </div>
       <input
+        id={id}
         type="file"
         accept={accept}
         disabled={busy}
+        aria-describedby={hintId}
+        aria-busy={busy}
         onChange={async (e) => {
           const file = e.target.files?.[0]
           if (!file) return
@@ -145,12 +173,22 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
   const save = async (complete: boolean) => {
     setSaving(true)
     setError(null)
+    if (complete && !hasClientLogo(form)) {
+      setError('Upload a light or dark logo.')
+      setStep('brand')
+      setSaving(false)
+      return
+    }
     try {
+      const darkLogoUrl = form.darkLogoUrl || form.logoUrl
       const payload: ProjectSettings = {
         ...form,
         brandName: form.brandName.trim(),
         clientDomain: form.clientDomain.trim().toLowerCase().replace(/^@/, ''),
         siteUrl: form.siteUrl.trim(),
+        darkLogoUrl,
+        lightLogoUrl: form.lightLogoUrl,
+        logoUrl: darkLogoUrl,
         setupComplete: complete,
         updatedAt: Date.now(),
         updatedBy: user.email ?? user.uid,
@@ -169,7 +207,7 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-subtle">{CMS_NAME}</p>
+      <p className="text-xs font-medium uppercase tracking-wider text-text-subtle">CMS</p>
       <h1 className="mt-1 font-label text-xl text-brand-ink">Client setup</h1>
       <p className="mt-2 text-sm text-text-muted">
         Record this client’s brand and who else may sign in. {CMS_SHORT_NAME} stays admin.
@@ -194,7 +232,7 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
         ))}
       </ol>
 
-      <div className="mt-6 space-y-5 rounded-panel border border-hairline-soft bg-surface p-5 shadow-panel">
+      <div className="mt-6 space-y-5 rounded-panel bg-surface p-5 shadow-panel">
         {step === 'brand' && (
           <>
             <Field label="Client brand name">
@@ -214,15 +252,36 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
                 placeholder="https://www.client.com"
               />
             </Field>
-            <FilePicker
-              label="Logo"
-              accept="image/svg+xml,image/png,image/webp"
-              previewUrl={form.logoUrl}
-              onFile={async (file) => {
-                const url = await uploadCmsAsset(file, 'logo')
-                patch({ logoUrl: url })
-              }}
-            />
+            <div>
+              <p className="text-xs font-medium text-text-muted">Logos</p>
+              <p className="mt-1 text-xs text-text-subtle">
+                Upload a light or dark logo. The other is optional.
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <FilePicker
+                  label="Light logo"
+                  hint="Use on dark backgrounds"
+                  accept="image/svg+xml,image/png,image/webp"
+                  previewSurface="dark"
+                  previewUrl={form.lightLogoUrl}
+                  onFile={async (file) => {
+                    const url = await uploadCmsAsset(file, 'logo-light')
+                    patch({ lightLogoUrl: url })
+                  }}
+                />
+                <FilePicker
+                  label="Dark logo"
+                  hint="Use on light backgrounds"
+                  accept="image/svg+xml,image/png,image/webp"
+                  previewSurface="light"
+                  previewUrl={form.darkLogoUrl || form.logoUrl}
+                  onFile={async (file) => {
+                    const url = await uploadCmsAsset(file, 'logo-dark')
+                    patch({ darkLogoUrl: url, logoUrl: url })
+                  }}
+                />
+              </div>
+            </div>
             <FilePicker
               label="Favicon"
               accept="image/png,image/x-icon,image/svg+xml,.ico"
@@ -266,6 +325,36 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
                 <dd className="text-brand-ink">{form.siteUrl || '—'}</dd>
               </div>
               <div>
+                <dt className="text-xs text-text-subtle">Logos</dt>
+                <dd className="mt-2 grid gap-3 sm:grid-cols-2">
+                  {(['light', 'dark'] as const).map((tone) => {
+                    const url = tone === 'light' ? form.lightLogoUrl : form.darkLogoUrl || form.logoUrl
+                    return (
+                      <div key={tone}>
+                        <p className="mb-1 text-xs text-text-muted">
+                          {tone === 'light' ? 'Light' : 'Dark'}
+                        </p>
+                        <div
+                          className={`flex h-16 items-center justify-center rounded-control px-3 ${
+                            tone === 'light'
+                              ? 'bg-brand-ink outline outline-1 outline-white/10'
+                              : 'bg-hairline-soft outline outline-1 outline-black/10'
+                          }`}
+                        >
+                          {url ? (
+                            <img src={url} alt="" className="h-8 w-auto max-w-full object-contain" />
+                          ) : (
+                            <span className={`text-xs ${tone === 'light' ? 'text-white/40' : 'text-text-subtle'}`}>
+                              —
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </dd>
+              </div>
+              <div>
                 <dt className="text-xs text-text-subtle">Editors</dt>
                 <dd className="text-brand-ink">
                   @{ADMIN_DOMAINS[0]}
@@ -294,7 +383,10 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
           type="button"
           variant="outline"
           disabled={stepIndex === 0 || saving}
-          onClick={() => setStep(STEPS[stepIndex - 1].id)}
+          onClick={() => {
+            const prev = STEPS[stepIndex - 1]
+            if (prev) setStep(prev.id)
+          }}
         >
           Back
         </Button>
@@ -308,7 +400,10 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
             {saving ? 'Saving…' : 'Save draft'}
           </Button>
           {step !== 'review' ? (
-            <Button type="button" onClick={() => setStep(STEPS[stepIndex + 1].id)}>
+            <Button type="button" onClick={() => {
+              const next = STEPS[stepIndex + 1]
+              if (next) setStep(next.id)
+            }}>
               Continue
             </Button>
           ) : (

@@ -2,13 +2,15 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { getDoc, setDoc, deleteDoc } from 'firebase/firestore'
-import type { CmsPageSection, CmsPageSectionItem, CmsPageSeo, CmsPageOpenGraph, CmsPage } from '@/types/cms'
+import type { CmsPageSection, CmsPageSectionItem, CmsPageSeo, CmsPage, CmsPageAeo } from '@/types/cms'
 import { useCmsPagesContext } from '@/contexts/CmsPagesContext'
 import { useSpace } from '@/contexts/SpaceContext'
 import { spaceDoc } from '@/lib/firestore-paths'
-import { uploadCmsAsset } from '@/lib/storage'
 import { useCmsComponentsContext } from '@/contexts/CmsComponentsContext'
 import { ChevronDown } from '@/components/icons/ChevronDown'
+import { pageDisplayName } from '@/lib/page-name'
+import { firstHeroImageUrl } from '@/lib/page-discovery'
+import { PageDiscoveryPanel } from '@/components/PageDiscoveryPanel'
 
 function Toast({
   message,
@@ -35,10 +37,6 @@ function Toast({
       {message}
     </div>
   )
-}
-
-function pageDisplayName(slug: string): string {
-  return slug.charAt(0).toUpperCase() + slug.slice(1)
 }
 
 function SectionItemRow({
@@ -101,7 +99,7 @@ function SectionItemRow({
               e.target.value || undefined,
             )
           }
-          className="shrink-0 rounded-control border border-hairline bg-surface px-3 py-1.5 text-xs text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+          className="shrink-0 rounded-control border-hairline bg-surface px-3 py-1.5 text-xs text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
         >
           <option value="">All variables ({visibleVars.length})</option>
           {visibleVars.map((v) => (
@@ -219,10 +217,10 @@ export function CmsPageEditor({ user }: { user: User }) {
   const [addItemDropdown, setAddItemDropdown] = useState<string | null>(null)
 
   const [seo, setSeo] = useState<CmsPageSeo>({})
-  const [openGraph, setOpenGraph] = useState<CmsPageOpenGraph>({ ogType: 'website' })
-  const [seoOpen, setSeoOpen] = useState(false)
+  const [aeo, setAeo] = useState<CmsPageAeo>({ faqs: [] })
 
   const [pageParentSlug, setPageParentSlug] = useState<string>('')
+  const [pageTitle, setPageTitle] = useState('')
   const { pages } = useCmsPagesContext()
   const topLevelPages = pages.filter((p) => !p.parentSlug && p.slug !== pageSlug)
 
@@ -260,6 +258,7 @@ export function CmsPageEditor({ user }: { user: User }) {
       await setDoc(spaceDoc(space, 'pages', newSlug), {
         ...oldData,
         slug: newSlug,
+        title: pageTitle.trim() || pageDisplayName(newSlug, (oldData as CmsPage).title),
         sections,
         updatedAt: Date.now(),
         updatedBy: user.email,
@@ -301,14 +300,16 @@ export function CmsPageEditor({ user }: { user: User }) {
           }
           setSections(migrated)
         }
-        if (data.seo) setSeo(data.seo)
-        if (data.openGraph) setOpenGraph({ ogType: 'website', ...data.openGraph })
+        setSeo((data as CmsPage).seo ?? {})
+        setAeo({ faqs: [], ...(data as CmsPage).aeo })
         setPageParentSlug((data as CmsPage).parentSlug ?? '')
+        setPageTitle((data as CmsPage).title ?? '')
       } else {
         setSections([])
         setSeo({})
-        setOpenGraph({ ogType: 'website' })
+        setAeo({ faqs: [] })
         setPageParentSlug('')
+        setPageTitle('')
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -330,9 +331,19 @@ export function CmsPageEditor({ user }: { user: User }) {
     try {
       const payload: Record<string, unknown> = {
         slug: pageSlug,
+        title: pageTitle.trim() || pageDisplayName(pageSlug),
         sections,
         seo,
-        openGraph,
+        openGraph: {
+          ogType: 'website',
+          ogTitle: seo.title,
+          ogDescription: seo.description,
+          ogImage: seo.image || firstHeroImageUrl(sections, components),
+        },
+        aeo: {
+          ...aeo,
+          faqs: (aeo.faqs ?? []).filter((faq) => faq.question.trim() || faq.answer.trim()),
+        },
         updatedAt: Date.now(),
         updatedBy: user.email,
       }
@@ -435,7 +446,7 @@ export function CmsPageEditor({ user }: { user: User }) {
     )
   }
 
-  const pageName = pageDisplayName(pageSlug)
+  const pageName = pageDisplayName(pageSlug, pageTitle)
 
   return (
     <div className="bg-surface font-body pb-24">
@@ -461,7 +472,7 @@ export function CmsPageEditor({ user }: { user: User }) {
                   }
                 }}
                 disabled={renaming}
-                className="rounded-control border border-brand-primary px-3 py-1.5 font-label text-lg text-brand-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="rounded-control border-2 border-brand-primary px-3 py-1.5 font-label text-lg text-brand-ink focus:outline-none focus-visible:ring-0"
                 autoFocus
               />
               <button
@@ -522,18 +533,28 @@ export function CmsPageEditor({ user }: { user: User }) {
           </div>
         )}
 
-        <section className="mb-8 flex items-center gap-4 rounded-panel border border-hairline-soft bg-surface px-6 py-4 shadow-panel">
+        <section className="mb-8 flex flex-wrap items-end gap-4 rounded-panel bg-surface px-6 py-4 shadow-panel">
+          <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
+            <span className="text-xs font-medium text-text-muted">Title</span>
+            <input
+              type="text"
+              value={pageTitle}
+              onChange={(e) => setPageTitle(e.target.value)}
+              placeholder={pageDisplayName(pageSlug)}
+              className="rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
+            />
+          </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-text-muted">Parent Page</span>
             <select
               value={pageParentSlug}
               onChange={(e) => setPageParentSlug(e.target.value)}
-              className="rounded-control border border-hairline bg-surface px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+              className="rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
             >
               <option value="">None (top-level)</option>
               {topLevelPages.map((p) => (
                 <option key={p.slug} value={p.slug}>
-                  {p.slug.charAt(0).toUpperCase() + p.slug.slice(1)}
+                  {pageDisplayName(p.slug, p.title)}
                 </option>
               ))}
             </select>
@@ -543,150 +564,18 @@ export function CmsPageEditor({ user }: { user: User }) {
           </span>
         </section>
 
-        <section className="mb-8 rounded-panel border border-hairline-soft bg-surface shadow-panel">
-          <button
-            type="button"
-            onClick={() => setSeoOpen((p) => !p)}
-            className="flex w-full items-center justify-between px-6 py-4"
-          >
-            <h2 className="font-label text-sm text-brand-ink">SEO &amp; Open Graph</h2>
-            <ChevronDown className={`h-4 w-4 text-text-subtle transition ${seoOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {seoOpen && (
-            <div className="border-t border-hairline px-6 pb-6 pt-4">
-              <div className="mb-5">
-                <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-subtle">SEO</h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-text-muted">Page Title</span>
-                    <input
-                      type="text"
-                      value={seo.title ?? ''}
-                      onChange={(e) => setSeo((s) => ({ ...s, title: e.target.value }))}
-                      placeholder="e.g. Northstar Coffee — Neighborhood Roastery"
-                      className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-text-muted">Canonical URL</span>
-                    <input
-                      type="url"
-                      value={seo.canonical ?? ''}
-                      onChange={(e) => setSeo((s) => ({ ...s, canonical: e.target.value }))}
-                      placeholder="https://www.client.com/page"
-                      className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="text-xs font-medium text-text-muted">Meta Description</span>
-                    <textarea
-                      rows={2}
-                      value={seo.description ?? ''}
-                      onChange={(e) => setSeo((s) => ({ ...s, description: e.target.value }))}
-                      placeholder="A brief description for search engine results (150–160 characters)"
-                      className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                    />
-                    <span className="text-xs text-text-subtle">
-                      {(seo.description ?? '').length}/160 characters
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={seo.noIndex ?? false}
-                      onChange={(e) => setSeo((s) => ({ ...s, noIndex: e.target.checked }))}
-                      className="h-4 w-4 rounded border-hairline text-brand-primary focus:ring-brand-primary"
-                    />
-                    <span className="text-xs font-medium text-text-muted">noindex (hide from search engines)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-subtle">Open Graph</h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-text-muted">OG Title</span>
-                    <input
-                      type="text"
-                      value={openGraph.ogTitle ?? ''}
-                      onChange={(e) => setOpenGraph((o) => ({ ...o, ogTitle: e.target.value }))}
-                      placeholder={seo.title || 'Falls back to page title'}
-                      className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-text-muted">OG Type</span>
-                    <select
-                      value={openGraph.ogType ?? 'website'}
-                      onChange={(e) => setOpenGraph((o) => ({ ...o, ogType: e.target.value }))}
-                      className="rounded-control border border-hairline bg-surface px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                    >
-                      <option value="website">website</option>
-                      <option value="article">article</option>
-                      <option value="restaurant">restaurant</option>
-                      <option value="product">product</option>
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="text-xs font-medium text-text-muted">OG Description</span>
-                    <textarea
-                      rows={2}
-                      value={openGraph.ogDescription ?? ''}
-                      onChange={(e) => setOpenGraph((o) => ({ ...o, ogDescription: e.target.value }))}
-                      placeholder={seo.description || 'Falls back to meta description'}
-                      className="rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                    />
-                  </label>
-                  <div className="flex flex-col gap-1 sm:col-span-2">
-                    <span className="text-xs font-medium text-text-muted">OG Image</span>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="url"
-                        value={openGraph.ogImage ?? ''}
-                        onChange={(e) => setOpenGraph((o) => ({ ...o, ogImage: e.target.value }))}
-                        placeholder="https://..."
-                        className="min-w-0 flex-1 rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
-                      />
-                      <label className="flex shrink-0 cursor-pointer items-center rounded-control border border-hairline bg-hairline-soft px-4 py-2 text-xs font-medium text-text-muted transition-colors duration-state hover:bg-hairline-soft">
-                        Upload
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="sr-only"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            try {
-                              const url = await uploadCmsAsset(file, 'og')
-                              setOpenGraph((o) => ({ ...o, ogImage: url }))
-                            } catch (err) {
-                              console.error('OG image upload failed', err)
-                            }
-                            e.target.value = ''
-                          }}
-                        />
-                      </label>
-                    </div>
-                    {openGraph.ogImage && (
-                      <img
-                        src={openGraph.ogImage}
-                        alt="OG preview"
-                        className="mt-2 h-32 w-auto rounded-tile border border-hairline object-cover"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
+        <PageDiscoveryPanel
+          seo={seo}
+          aeo={aeo}
+          heroImageUrl={firstHeroImageUrl(sections, components)}
+          onSeo={setSeo}
+          onAeo={setAeo}
+        />
 
         {sections.map((section, sIdx) => (
           <section
             key={section.id}
-            className="mb-8 rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel"
+            className="mb-8 rounded-panel bg-surface p-6 shadow-panel"
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -694,7 +583,7 @@ export function CmsPageEditor({ user }: { user: User }) {
                   type="text"
                   value={section.name}
                   onChange={(e) => renameSection(section.id, e.target.value)}
-                  className="rounded-control border border-transparent px-2 py-1 font-label text-lg text-brand-ink hover:border-hairline focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="rounded-control border border-transparent px-2 py-1 font-label text-lg text-brand-ink hover:border-hairline border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </div>
               <div className="flex items-center gap-1">
@@ -802,7 +691,7 @@ export function CmsPageEditor({ user }: { user: User }) {
                 onChange={(e) => setAddSectionName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addSection()}
                 placeholder="Section name, e.g. Hero Slides"
-                className="rounded-control border border-hairline px-4 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="rounded-control border-hairline px-4 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 autoFocus
               />
               <button

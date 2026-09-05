@@ -113,7 +113,7 @@ function ChipInput({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
           placeholder={placeholder}
-          className="flex-1 rounded-control border border-hairline px-3 py-1.5 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+          className="flex-1 rounded-control border-hairline px-3 py-1.5 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
         />
         <button
           type="button"
@@ -305,7 +305,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
         </nav>
 
         {/* Type selector */}
-        <section className="mb-6 rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel">
+        <section className="mb-6 rounded-panel bg-surface p-6 shadow-panel">
           <h2 className="font-label mb-4 text-lg text-brand-ink">Notification Type</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {CATEGORY_OPTIONS.map((opt) => (
@@ -326,7 +326,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
         </section>
 
         {/* Core fields */}
-        <section className="mb-6 rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel">
+        <section className="mb-6 rounded-panel bg-surface p-6 shadow-panel">
           <h2 className="font-label mb-4 text-lg text-brand-ink">Content</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <FieldLabel
@@ -339,7 +339,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                 type="text"
                 value={form.title}
                 onChange={(e) => patch({ title: e.target.value })}
-                className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               />
             </FieldLabel>
 
@@ -352,7 +352,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                 rows={3}
                 value={form.body ?? ''}
                 onChange={(e) => patch({ body: e.target.value || undefined })}
-                className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               />
             </FieldLabel>
 
@@ -368,7 +368,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                   value={form.primary_action_url ?? ''}
                   onChange={(e) => patch({ primary_action_url: e.target.value || undefined })}
                   placeholder="https://..."
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
             )}
@@ -469,7 +469,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                       value={form.image ?? ''}
                       onChange={(e) => patch({ image: e.target.value || undefined })}
                       placeholder="Paste URL..."
-                      className="flex-1 rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                      className="flex-1 rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                     />
                   </div>
                 </FieldLabel>
@@ -478,7 +478,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                     type="text"
                     value={form.image_alt ?? ''}
                     onChange={(e) => patch({ image_alt: e.target.value || undefined })}
-                    className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                    className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                   />
                 </FieldLabel>
               </>
@@ -534,7 +534,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                       value={form.illustration ?? ''}
                       onChange={(e) => patch({ illustration: e.target.value || undefined })}
                       placeholder="Paste URL..."
-                      className="flex-1 rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                      className="flex-1 rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                     />
                   </div>
                 </FieldLabel>
@@ -543,7 +543,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                     type="text"
                     value={form.illustration_alt ?? ''}
                     onChange={(e) => patch({ illustration_alt: e.target.value || undefined })}
-                    className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                    className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                   />
                 </FieldLabel>
               </>
@@ -568,7 +568,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
 
         {/* Actions (CTAs) — alerts only */}
         {isAlert && (
-          <section className="mb-6 rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel">
+          <section className="mb-6 rounded-panel bg-surface p-6 shadow-panel">
             <h2 className="font-label mb-4 text-lg text-brand-ink">Call to Action</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <FieldLabel label="Primary Button Label">
@@ -577,7 +577,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                   value={form.primary_action_label ?? ''}
                   onChange={(e) => patch({ primary_action_label: e.target.value || undefined })}
                   placeholder='e.g. "Order Now"'
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
               <FieldLabel label="Primary Button URL">
@@ -586,7 +586,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                   value={form.primary_action_url ?? ''}
                   onChange={(e) => patch({ primary_action_url: e.target.value || undefined })}
                   placeholder="https://..."
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
               <FieldLabel label="Secondary Button Label" className="sm:col-span-2">
@@ -595,7 +595,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                   value={form.secondary_action_label ?? ''}
                   onChange={(e) => patch({ secondary_action_label: e.target.value || undefined })}
                   placeholder='e.g. "Maybe Later"'
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
             </div>
@@ -604,7 +604,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
 
         {/* Geo Targeting — new_location only */}
         {isAlert && alertType === 'new_location' && (
-          <section className="mb-6 rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel">
+          <section className="mb-6 rounded-panel bg-surface p-6 shadow-panel">
             <h2 className="font-label mb-4 text-lg text-brand-ink">Geo Targeting</h2>
             <p className="mb-4 text-xs text-text-muted">
               Only show this alert to users within a radius of the location.
@@ -629,7 +629,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                       })
                     }
                   }}
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
               <FieldLabel label="Longitude">
@@ -648,7 +648,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                       },
                     })
                   }}
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
               <FieldLabel label="Radius (miles)">
@@ -667,7 +667,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                       },
                     })
                   }}
-                  className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 />
               </FieldLabel>
             </div>
@@ -675,14 +675,14 @@ export function CmsAlertEditor({ user }: { user: User }) {
         )}
 
         {/* Display & Targeting */}
-        <section className="mb-6 rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel">
+        <section className="mb-6 rounded-panel bg-surface p-6 shadow-panel">
           <h2 className="font-label mb-4 text-lg text-brand-ink">Display &amp; Targeting</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <FieldLabel label="Status" required>
               <select
                 value={form.status}
                 onChange={(e) => patch({ status: e.target.value as CmsNotificationStatus })}
-                className="w-full rounded-control border border-hairline bg-surface px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               >
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
@@ -696,7 +696,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                 min={0}
                 value={form.priority}
                 onChange={(e) => patch({ priority: parseInt(e.target.value, 10) || 0 })}
-                className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               />
             </FieldLabel>
 
@@ -715,7 +715,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                 <select
                   value={form.trigger}
                   onChange={(e) => patch({ trigger: e.target.value as CmsNotificationTrigger })}
-                  className="w-full rounded-control border border-hairline bg-surface px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                  className="w-full rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
                 >
                   {CMS_TRIGGERS.map((t) => (
                     <option key={t.id} value={t.id}>{t.label}</option>
@@ -728,7 +728,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
               <select
                 value={form.frequency}
                 onChange={(e) => patch({ frequency: e.target.value as CmsNotificationFrequency })}
-                className="w-full rounded-control border border-hairline bg-surface px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               >
                 {CMS_FREQUENCIES.map((f) => (
                   <option key={f.id} value={f.id}>{f.label}</option>
@@ -741,7 +741,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                 type="datetime-local"
                 value={form.start_date ?? ''}
                 onChange={(e) => patch({ start_date: e.target.value || undefined })}
-                className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               />
             </FieldLabel>
 
@@ -750,7 +750,7 @@ export function CmsAlertEditor({ user }: { user: User }) {
                 type="datetime-local"
                 value={form.end_date ?? ''}
                 onChange={(e) => patch({ end_date: e.target.value || undefined })}
-                className="w-full rounded-control border border-hairline px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+                className="w-full rounded-control border-hairline px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               />
             </FieldLabel>
 

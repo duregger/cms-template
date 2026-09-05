@@ -53,6 +53,30 @@ export const CMS_SPACES: { id: CmsSpace; label: string }[] = [
   { id: 'alerts', label: 'Alerts' },
 ]
 
+export const DEFAULT_SPACES: CmsSpace[] = ['web', 'alerts']
+export const OPTIONAL_SPACES: CmsSpace[] = ['mobile-apps', 'kiosk']
+
+export function spaceLabel(id: CmsSpace): string {
+  return CMS_SPACES.find((s) => s.id === id)?.label ?? id
+}
+
+export function isDefaultSpace(id: CmsSpace): boolean {
+  return id === 'web' || id === 'alerts'
+}
+
+export function isSpacePublished(id: CmsSpace, published?: CmsSpace[] | null): boolean {
+  return isDefaultSpace(id) || (published ?? []).includes(id)
+}
+
+export function visibleSwitcherSpaces(published?: CmsSpace[] | null, active?: CmsSpace): CmsSpace[] {
+  const extras = CMS_SPACES
+    .map((s) => s.id)
+    .filter((id) => OPTIONAL_SPACES.includes(id) && (
+      (published ?? []).includes(id) || id === active
+    ))
+  return ['web', 'alerts', ...extras]
+}
+
 export const CMS_NOTIFICATION_CATEGORIES: { id: string; label: string; description: string }[] = [
   { id: 'announcement_bar', label: 'Announcement Bars', description: 'Sitewide banners above the nav' },
   { id: 'announcement', label: 'Announcements', description: 'Centered text modals for promos & CTAs' },
@@ -91,6 +115,8 @@ export type CmsVariableField = {
   type: CmsComponentVariableType | ''
   options?: string[]
   defaultValue?: string
+  /** Design-system text color for text / longform fields. CSS var or hex. */
+  color?: string
 }
 
 export type CmsComponentVariable = {
@@ -111,7 +137,7 @@ export type CmsComponent = {
   updatedBy?: string
 }
 
-/** Hero variable = variant (e.g. Rio Red Tear Right, Black Bean Full) */
+/** Hero variable = layout variant (e.g. Split — Copy Left, Image Right) */
 export type CmsHeroSlide = {
   id: string
   component: string
@@ -146,6 +172,8 @@ export type CmsCategoryCard = {
 
 export type CmsContentBlock = {
   id: string
+  tagline?: string
+  tagline_color?: string
   headline: string
   body: string
   button_text: string
@@ -156,10 +184,14 @@ export type CmsContentBlock = {
   body_color?: string
   button_bg_color?: string
   button_text_color?: string
-  layout?: 'image-left' | 'image-right'
+  layout?: 'image-left' | 'image-right' | 'full-image' | 'image-above'
   image_style?: 'full-bleed' | 'framed'
   accent_color?: string
   decoration?: string
+  container_radius?: string
+  container_padding?: string
+  image_radius?: string
+  cta_radius?: string
 }
 
 export type CmsPageSectionItem = {
@@ -177,8 +209,11 @@ export type CmsPageSection = {
 export type CmsPageSeo = {
   title?: string
   description?: string
+  keywords?: string[]
   canonical?: string
   noIndex?: boolean
+  /** Optional search/share image. Falls back to the first hero image. */
+  image?: string
 }
 
 export type CmsPageOpenGraph = {
@@ -188,12 +223,38 @@ export type CmsPageOpenGraph = {
   ogType?: string
 }
 
+/** Generative Engine Optimization — facts for AI overviews and citations. */
+export type CmsPageGeo = {
+  entityName?: string
+  entityType?: string
+  summary?: string
+  topics?: string[]
+  locality?: string
+  sameAs?: string[]
+}
+
+export type CmsPageFaq = {
+  id: string
+  question: string
+  answer: string
+}
+
+/** Answer Engine Optimization — FAQPage / speakable schema. */
+export type CmsPageAeo = {
+  speakable?: string
+  faqs?: CmsPageFaq[]
+}
+
 export type CmsPage = {
   slug: string
+  /** Sidebar / editor label. Falls back to a title-cased slug when omitted. */
+  title?: string
   parentSlug?: string
   sections: CmsPageSection[]
   seo?: CmsPageSeo
   openGraph?: CmsPageOpenGraph
+  geo?: CmsPageGeo
+  aeo?: CmsPageAeo
   /** @deprecated legacy hero array — migrated to sections on load */
   hero?: CmsHeroSlide[]
   /** @deprecated legacy categories — migrated to sections on load */

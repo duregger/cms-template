@@ -10,7 +10,7 @@ import {
 import { useDesignTokens } from '@/hooks/useDesignTokens'
 import { useProjectSettings } from '@/hooks/useProjectSettings'
 import { CmsLayout } from '@/components/CmsLayout'
-import { SpaceProvider, SpaceContext } from '@/contexts/SpaceContext'
+import { SpaceProvider, SpaceContext, useSpace } from '@/contexts/SpaceContext'
 import { CmsPagesProvider } from '@/contexts/CmsPagesContext'
 import { CmsComponentsProvider } from '@/contexts/CmsComponentsContext'
 import { CmsAlertsProvider } from '@/contexts/CmsAlertsContext'
@@ -24,7 +24,8 @@ import { CmsReleaseNotes } from '@/pages/CmsReleaseNotes'
 import { CmsDevDocs } from '@/pages/CmsDevDocs'
 import { CmsDesignSystem } from '@/pages/CmsDesignSystem'
 import { CmsSetup } from '@/pages/CmsSetup'
-import { CMS_NAME, CMS_SHORT_NAME, allowedEditorDomains, parseAllowList } from '@/lib/brand'
+import { CMS_NAME, CMS_SHORT_NAME, allowedEditorDomains, isBeginAdmin, parseAllowList } from '@/lib/brand'
+import { isSpacePublished } from '@/types/cms'
 import logo from '@/assets/logos/begin-logo.svg'
 import logoWhite from '@/assets/logos/begin-logo-white.svg'
 
@@ -36,6 +37,15 @@ function isAllowedEditor(email: string): boolean {
   return ALLOWED_EMAILS.includes(email.toLowerCase()) || ALLOWED_DOMAINS.includes(domain)
 }
 
+function SpaceLayout({ user }: { user: User }) {
+  const space = useSpace()
+  const { settings, loading } = useProjectSettings()
+  if (!loading && !isSpacePublished(space, settings?.publishedSpaces) && !isBeginAdmin(user.email)) {
+    return <Navigate to="/web" replace />
+  }
+  return <CmsLayout user={user} />
+}
+
 function SpaceRoutes({ user }: { user: User }) {
   return (
     <SpaceProvider>
@@ -43,7 +53,7 @@ function SpaceRoutes({ user }: { user: User }) {
         <CmsComponentsProvider>
           <CmsAlertsProvider>
             <Routes>
-              <Route element={<CmsLayout user={user} />}>
+              <Route element={<SpaceLayout user={user} />}>
                 <Route index element={<CmsPagesList user={user} />} />
                 <Route path="pages/:slug" element={<CmsPageEditor user={user} />} />
                 <Route path="components" element={<CmsComponentsList user={user} />} />
@@ -147,7 +157,7 @@ function App() {
   if (!user) {
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-brand-ink px-6">
-        <div className="w-full max-w-sm rounded-panel border border-hairline-soft bg-surface p-8 text-center shadow-panel">
+        <div className="w-full max-w-sm rounded-panel bg-surface p-8 text-center shadow-panel">
           <img src={logo} alt={CMS_SHORT_NAME} className="mx-auto mb-8 h-10 w-auto" />
 
           <h1 className="font-headline text-xl text-brand-ink">{CMS_NAME}</h1>
@@ -174,10 +184,6 @@ function App() {
               Access is restricted to authorized accounts.
             </p>
           )}
-
-          <p className="mt-8 font-body text-xs text-text-muted">
-            {CMS_NAME}
-          </p>
         </div>
       </div>
     )

@@ -5,10 +5,7 @@ import { useCmsPagesContext } from '@/contexts/CmsPagesContext'
 import { useSpace } from '@/contexts/SpaceContext'
 import { spaceDoc } from '@/lib/firestore-paths'
 import type { User } from 'firebase/auth'
-
-function pageDisplayName(slug: string): string {
-  return slug.charAt(0).toUpperCase() + slug.slice(1)
-}
+import { pageDisplayName } from '@/lib/page-name'
 
 export function CmsPagesList({ user }: { user: User }) {
   const navigate = useNavigate()
@@ -37,6 +34,7 @@ export function CmsPagesList({ user }: { user: User }) {
     try {
       const pageData: Record<string, unknown> = {
         slug,
+        title: pageDisplayName(slug),
         sections: [],
         updatedAt: Date.now(),
         updatedBy: user.email,
@@ -63,10 +61,15 @@ export function CmsPagesList({ user }: { user: User }) {
       <h1 className="font-headline mb-8 text-2xl text-brand-ink">
         Create Page
       </h1>
+      {space === 'web' && (
+        <p className="mb-6 text-sm text-text-muted">
+          The Web space is seeded with the Curbside sitemap (Home, About Us, Get Involved, Our Programs, Contact Us, DONATE NOW, and the five program sites). Open a page to add a hero slider and content blocks. Program links belong in components, not extra pages.
+        </p>
+      )}
 
       <form
         onSubmit={handleCreatePage}
-        className="rounded-panel border border-hairline-soft bg-surface p-6 shadow-panel"
+        className="rounded-panel bg-surface p-6 shadow-panel"
       >
         {error && (
           <p className="mb-4 rounded-control bg-danger-tint px-4 py-2 font-body text-sm text-danger-strong">
@@ -88,7 +91,7 @@ export function CmsPagesList({ user }: { user: User }) {
                 setError(null)
               }}
               placeholder="e.g. home, summer-promo"
-              className="flex-1 rounded-control border border-hairline px-4 py-2 font-body text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+              className="flex-1 rounded-control border-hairline px-4 py-2 font-body text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
               autoComplete="off"
             />
             <button
@@ -106,12 +109,12 @@ export function CmsPagesList({ user }: { user: User }) {
             <select
               value={parentSlug}
               onChange={(e) => setParentSlug(e.target.value)}
-              className="rounded-control border border-hairline bg-surface px-3 py-2 text-sm focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+              className="rounded-control border-hairline bg-surface px-3 py-2 text-sm border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
             >
               <option value="">None (top-level page)</option>
               {topLevelPages.map((p) => (
                 <option key={p.slug} value={p.slug}>
-                  {pageDisplayName(p.slug)}
+                  {pageDisplayName(p.slug, p.title)}
                 </option>
               ))}
             </select>

@@ -37,7 +37,7 @@ export function HeroSlideCard({
               updateSlide(slide.id, { componentId: cid, component: c?.name ?? '' })
             }
           }}
-          className="rounded-control border border-hairline bg-surface px-3 py-2 text-sm font-medium text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+          className="rounded-control border-hairline bg-surface px-3 py-2 text-sm font-medium text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
         >
           <option value="">- Add Component -</option>
           {heroComponents.map((c) => (
@@ -51,7 +51,7 @@ export function HeroSlideCard({
           <select
             value={slide.variable ?? ''}
             onChange={(e) => updateSlide(slide.id, { variable: e.target.value || undefined })}
-            className="rounded-control border border-hairline bg-surface px-3 py-2 text-sm font-medium text-brand-ink focus:border-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1"
+            className="rounded-control border-hairline bg-surface px-3 py-2 text-sm font-medium text-brand-ink border-2 focus:border-brand-primary focus:outline-none focus-visible:ring-0"
           >
             <option value="">- Choose Variable -</option>
             {comp.variables.map((v) => (

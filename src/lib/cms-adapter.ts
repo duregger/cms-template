@@ -1,4 +1,5 @@
 import type { CmsHeroSlide, CmsCategoryCard, CmsContentBlock, CmsComponent } from '@/types/cms'
+import { fieldUsesTextColor } from '@/lib/variable-field'
 
 /** Normalize variable key for lookup: trim, lowercase, spaces/underscores → hyphens */
 function normalizeVariableKey(key: string): string {
@@ -7,45 +8,30 @@ function normalizeVariableKey(key: string): string {
 
 /** Map variable key (from API component.variables[].key) → { component, layout, textAlignment } */
 const VARIANT_TO_HERO: Record<string, { component: string; layout?: string; textAlignment?: string }> = {
-  'rio-red-tear-right': { component: 'Hero_Rio-Red', layout: 'image-left' },
-  'rio-red-tear-left': { component: 'Hero_Rio-Red', layout: 'image-right' },
-  'black-bean-tear-right': { component: 'Hero_Black-Bean', layout: 'image-left' },
-  'black-bean-tear-left': { component: 'Hero_Black-Bean', layout: 'image-right' },
-  'crema-tear-right': { component: 'Hero_Crema', layout: 'image-left' },
-  'crema-tear-left': { component: 'Hero_Crema', layout: 'image-right' },
-  'hero-content': { component: 'Hero_Rio-Red', layout: 'image-right' },
-  'white-full': { component: 'Hero_White_Full' },
-  'rio-red-full': { component: 'Hero_Rio-Red_Full', textAlignment: 'left' },
-  'black-bean-full': { component: 'Hero_White_Full' },
-  'image-centered': { component: 'Hero_Image_Centered' },
-  'image-full': { component: 'Hero_Image_Full' },
-  'image-centered-full': { component: 'Hero_Image_Centered_Full' },
-  'image-center-image-full': { component: 'Hero_Image_Centered_Full' },
-  'image-centered-image-full': { component: 'Hero_Image_Centered_Full' },
-  'centered-image-full': { component: 'Hero_Image_Centered_Full' },
-  'image-center-full': { component: 'Hero_Image_Centered_Full' },
+  'left-content-right-image': { component: 'Hero_Split', layout: 'copy-left-image-right', textAlignment: 'left' },
+  'right-content-left-image': { component: 'Hero_Split', layout: 'copy-right-image-left', textAlignment: 'left' },
+  'full-bleed-overlay': { component: 'Hero_FullBleed', layout: 'full-bleed', textAlignment: 'left' },
+  'centered-stack': { component: 'Hero_Centered', layout: 'centered-stack', textAlignment: 'center' },
+  'color-field': { component: 'Hero_ColorField', layout: 'color-field', textAlignment: 'center' },
+  'hero-content': { component: 'Hero_Split', layout: 'copy-left-image-right' },
 }
 
 const KNOWN_HERO_VARIANTS = new Set([
-  'Hero_Rio-Red', 'hero_rio-red', 'Hero_Black-Bean', 'hero_black-bean', 'Hero_Crema', 'hero_crema',
-  'Hero_White_Full', 'hero_white_full', 'Hero_Rio-Red_Full', 'hero_rio-red_full',
-  'Hero_Image_Centered', 'hero_image_centered', 'Hero_Image_Full', 'hero_image_full',
-  'Hero_Image_Centered', 'hero_image_centered', 'Hero_Image_Full', 'hero_image_full',
-  'Hero_Image_Centered_Full', 'hero_image_centered_full',
+  'Hero_Split',
+  'hero_split',
+  'Hero_FullBleed',
+  'hero_fullbleed',
+  'Hero_Centered',
+  'hero_centered',
+  'Hero_ColorField',
+  'hero_colorfield',
 ])
 
 const COMPONENT_ALIASES: Record<string, string> = {
-  'hero rio red': 'Hero_Rio-Red',
-  'hero black bean': 'Hero_Black-Bean',
-  'hero crema': 'Hero_Crema',
-  'hero white full': 'Hero_White_Full',
-  'hero rio red full': 'Hero_Rio-Red_Full',
-  'hero image centered': 'Hero_Image_Centered',
-  'hero image full': 'Hero_Image_Full',
-  'hero image centered full': 'Hero_Image_Centered_Full',
-  'hero image center image full': 'Hero_Image_Centered_Full',
-  'image centered full': 'Hero_Image_Centered_Full',
-  'image center image full': 'Hero_Image_Centered_Full',
+  'hero split': 'Hero_Split',
+  'hero full bleed': 'Hero_FullBleed',
+  'hero centered': 'Hero_Centered',
+  'hero color field': 'Hero_ColorField',
 }
 
 function resolveComponentFromName(name: string): string | null {
@@ -57,12 +43,15 @@ function resolveComponentFromName(name: string): string | null {
 
 const FIELD_KEY_MAP: Record<string, string> = {
   headline: 'headline',
+  headline_top: 'headline',
   headline_1: 'headline',
   header_1: 'headline',
   main_headline: 'headline',
   title: 'headline',
   subheader: 'subheader',
+  headline_small: 'subheader',
   h2: 'h2',
+  headline_bottom: 'h2',
   headline_2: 'h2',
   header_2: 'h2',
   subheadline: 'h2',
@@ -113,6 +102,9 @@ function buildContentFromVariable(slide: CmsHeroSlide, component: CmsComponent |
     } else if (typeof val === 'string') {
       const targetKey = FIELD_KEY_MAP[fKey] ?? FIELD_KEY_MAP[keyLower(fKey)] ?? fKey
       built[targetKey] = val
+      if (f.color && fieldUsesTextColor(f)) {
+        built[`${targetKey}_color`] = f.color
+      }
     }
   }
   return built as Partial<CmsHeroSlide>
@@ -130,7 +122,7 @@ export function resolveHeroSlide(
   const heroVariant =
     heroConfig?.component ??
     resolveComponentFromName(slide.component ?? '') ??
-    'Hero_Rio-Red'
+    'Hero_Split'
 
   const layout = heroConfig?.layout ?? slide.layout
 
@@ -179,12 +171,18 @@ export function resolveContentBlock(component: CmsComponent | null): CmsContentB
         } else if (k === 'image_alt' || k === 'alt') {
           imageAlt = val
           if (block.image) block.image.alt = val
+        } else if (k === 'tagline' || k === 'eyebrow' || k === 'kicker') {
+          block.tagline = val
+          if (f.color) block.tagline_color = f.color
         } else if (k === 'headline' || k === 'title') {
           block.headline = val
-        } else if (k === 'body' || k === 'description' || k === 'text') {
+          if (f.color) block.headline_color = f.color
+        } else if (k === 'body' || k === 'description' || k === 'text' || k === 'detail_copy' || k === 'detail') {
           block.body = val
+          if (f.color) block.body_color = f.color
         } else if (k === 'button_text' || k === 'cta_text') {
           block.button_text = val
+          if (f.color) block.button_text_color = f.color
         } else if (k === 'button_url' || k === 'button_link' || k === 'cta_url' || (t === 'url' && /button|cta|link/.test(k))) {
           block.button_url = val
         } else if (k === 'background_color' || k === 'bg_color') {
@@ -199,6 +197,14 @@ export function resolveContentBlock(component: CmsComponent | null): CmsContentB
           block.button_text_color = val
         } else if (k === 'layout') {
           block.layout = val as CmsContentBlock['layout']
+        } else if (k === 'container_radius') {
+          block.container_radius = val
+        } else if (k === 'container_padding' || k === 'outside_padding') {
+          block.container_padding = val
+        } else if (k === 'image_radius') {
+          block.image_radius = val
+        } else if (k === 'cta_radius') {
+          block.cta_radius = val
         } else if (k === 'image_style') {
           block.image_style = val as CmsContentBlock['image_style']
         } else if (k === 'accent_color') {

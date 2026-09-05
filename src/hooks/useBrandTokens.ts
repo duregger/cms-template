@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getDoc, setDoc } from 'firebase/firestore'
 import type { CmsSpace } from '@/types/cms'
 import type { BrandTokens } from '@/types/tokens'
+import { applyPublishedContrast } from '@/lib/token-semantic-contrast'
 import { tokensDraftDoc, tokensPublishedDoc, tokenVersionDoc } from '@/lib/token-paths'
 
 /** Firestore rejects explicit `undefined`; strip them before writing. */
@@ -76,7 +77,7 @@ export function useBrandTokens(space: CmsSpace) {
 
   const publish = useCallback(
     async (tokens: BrandTokens, email?: string) => {
-      const payload = stripUndefinedDeep(withMeta(tokens, space, email))
+      const payload = stripUndefinedDeep(withMeta(applyPublishedContrast(tokens), space, email))
       await setDoc(tokensPublishedDoc(space), payload)
       // Best-effort version snapshot for rollback; non-fatal on failure.
       try {
