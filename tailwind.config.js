@@ -5,10 +5,8 @@ export default {
     extend: {
       fontFamily: {
         display: ['Georgia', 'Cambria', 'serif'],
-        optic: ['Optic', 'Impact', 'Helvetica Neue', 'sans-serif'],
-        metallophile: ['Metallophile Sp8', 'Helvetica Neue', 'sans-serif'],
-        cabin: ['Cabin', 'Helvetica Neue', 'sans-serif'],
-        'nunito-sans': ['Nunito Sans', 'sans-serif'],
+        optic: ['Archivo', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'sans-serif'],
+        cabin: ['Cabin', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'sans-serif'],
       },
       fontSize: {
         'label-sm': ['11px', { lineHeight: '110%' }],

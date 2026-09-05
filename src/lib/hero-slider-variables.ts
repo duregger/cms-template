@@ -25,12 +25,12 @@ function field(draft: FieldDraft): CmsVariableField {
 }
 
 const COPY_DEFAULTS = {
-  headline_top: 'Providing income opportunities',
-  headline_small: 'Supportive employment and housing programs.',
+  headline_top: 'Welcome',
+  headline_small: 'A short line about what you do',
   headline_bottom:
-    'Curbside was created to provide employment, income, and job skills training — and to build community.',
-  button_text: 'Get involved',
-  button_url: '/get-involved',
+    'Replace this copy and add a photo. This slider is ready to place on Home.',
+  button_text: 'Learn more',
+  button_url: '/',
 }
 
 function sharedCopy(layout: HeroSliderLayout, align: 'left' | 'right' | 'center'): FieldDraft[] {
@@ -47,7 +47,12 @@ function sharedCopy(layout: HeroSliderLayout, align: 'left' | 'right' | 'center'
     },
     { key: 'button_text', label: 'Button Text', type: 'text', defaultValue: COPY_DEFAULTS.button_text },
     { key: 'button_url', label: 'Button Link', type: 'url', defaultValue: COPY_DEFAULTS.button_url },
-    { key: 'button_color', label: 'Button Color', type: 'hexcode', defaultValue: '#ffffff' },
+    {
+      key: 'button_color',
+      label: 'Button Color',
+      type: 'hexcode',
+      defaultValue: 'var(--color-semantic-surface-action-primary)',
+    },
   ]
 }
 
@@ -65,7 +70,7 @@ export const HERO_SLIDER_VARIABLE_DEFS: {
     layout: 'copy-left-image-right',
     align: 'left',
     includeImage: true,
-    background: '#16764F',
+    background: 'var(--color-semantic-surface-action-primary)',
   },
   {
     key: 'right_content_left_image',
@@ -73,7 +78,7 @@ export const HERO_SLIDER_VARIABLE_DEFS: {
     layout: 'copy-right-image-left',
     align: 'left',
     includeImage: true,
-    background: '#16764F',
+    background: 'var(--color-semantic-surface-action-primary)',
   },
   {
     key: 'full_bleed_overlay',
@@ -81,7 +86,7 @@ export const HERO_SLIDER_VARIABLE_DEFS: {
     layout: 'full-bleed',
     align: 'left',
     includeImage: true,
-    background: '#111313',
+    background: '#111827',
   },
   {
     key: 'centered_stack',
@@ -89,7 +94,7 @@ export const HERO_SLIDER_VARIABLE_DEFS: {
     layout: 'centered-stack',
     align: 'center',
     includeImage: true,
-    background: '#16764F',
+    background: 'var(--color-semantic-surface-action-primary)',
   },
   {
     key: 'color_field',
@@ -97,7 +102,7 @@ export const HERO_SLIDER_VARIABLE_DEFS: {
     layout: 'color-field',
     align: 'center',
     includeImage: false,
-    background: '#16764F',
+    background: 'var(--color-semantic-surface-action-primary)',
   },
 ]
 

@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth'
 import { useCmsPagesContext } from '@/contexts/CmsPagesContext'
 import { useCmsComponentsContext } from '@/contexts/CmsComponentsContext'
 import { useSpace } from '@/contexts/SpaceContext'
-import { CMS_NOTIFICATION_CATEGORIES } from '@/types/cms'
+import { CMS_NOTIFICATION_CATEGORIES, isBlogSpace, isReservedSpace } from '@/types/cms'
 import type { CmsComponent, CmsSpace } from '@/types/cms'
 import { SpaceSwitcher } from '@/components/SpaceSwitcher'
 import type { CmsSidebarSection } from '@/hooks/useCmsPages'
@@ -14,6 +14,8 @@ import { resolveClientLogos } from '@/types/settings'
 import { CMS_NAME } from '@/lib/brand'
 import { pageDisplayName } from '@/lib/page-name'
 import { publishSpacePages } from '@/lib/publish-space'
+import { publishBlogSpace } from '@/lib/publish-blog'
+import { useCmsBlogPosts } from '@/hooks/useCmsBlogPosts'
 import { GripVertical } from '@/components/icons/GripVertical'
 
 function PageLink({
@@ -222,10 +224,65 @@ function AlertsSidebar({ space }: { space: CmsSpace }) {
   )
 }
 
+function BlogSidebar({ space }: { space: CmsSpace }) {
+  const { posts } = useCmsBlogPosts(space)
+
+  return (
+    <>
+      <div className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-text-muted">
+        Posts
+      </div>
+      <ul className="space-y-0.5">
+        {posts.map((post) => (
+          <li key={post.slug}>
+            <NavLink
+              to={`/${space}/posts/${post.slug}`}
+              className={({ isActive }) =>
+                `block rounded-control px-3 py-2 text-sm font-medium transition-colors duration-state hover:bg-brand-hover ${
+                  isActive ? 'bg-brand-rest text-brand-ink-on-tint' : 'text-brand-ink'
+                }`
+              }
+            >
+              {post.title || post.slug}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+      <NavLink
+        to={`/${space}`}
+        end
+        className={({ isActive }) =>
+          `mt-2 flex items-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition-colors duration-state hover:bg-brand-hover ${
+            isActive ? 'bg-brand-rest text-brand-ink-on-tint' : 'text-brand-primary'
+          }`
+        }
+      >
+        <span className="text-lg">+</span>
+        Create Post
+      </NavLink>
+
+      <div className="mb-2 mt-6 px-2 text-xs font-medium uppercase tracking-wider text-text-muted">
+        Taxonomy
+      </div>
+      <NavLink
+        to={`/${space}/categories`}
+        className={({ isActive }) =>
+          `block rounded-control px-3 py-2 text-sm font-medium transition-colors duration-state hover:bg-brand-hover ${
+            isActive ? 'bg-brand-rest text-brand-ink-on-tint' : 'text-brand-ink'
+          }`
+        }
+      >
+        Categories
+      </NavLink>
+    </>
+  )
+}
+
 export function CmsLayout({ user }: { user: User }) {
   const space = useSpace()
   const isAlerts = space === 'alerts'
-  const { settings } = useProjectSettings()
+  const { settings, loading: settingsLoading } = useProjectSettings()
+  const isBlog = isBlogSpace(space, settings?.blogSpaces)
   const sidebarTitle = settings?.brandName?.trim() || 'Curbside'
   const { dark: darkLogo } = resolveClientLogos(settings)
 
@@ -259,9 +316,15 @@ export function CmsLayout({ user }: { user: User }) {
     setPublishing(true)
     setPublishNote(null)
     try {
-      const entry = await publishSpacePages(space, user.email ?? undefined)
-      const who = entry.publishedBy ?? 'Unknown'
-      setPublishNote({ text: `Published ${entry.pageCount} pages · ${who}` })
+      if (isBlog) {
+        const entry = await publishBlogSpace(space, user.email ?? undefined)
+        const who = entry.publishedBy ?? 'Unknown'
+        setPublishNote({ text: `Published ${entry.postCount} posts · ${who}` })
+      } else {
+        const entry = await publishSpacePages(space, user.email ?? undefined)
+        const who = entry.publishedBy ?? 'Unknown'
+        setPublishNote({ text: `Published ${entry.pageCount} pages · ${who}` })
+      }
     } catch (err) {
       const text = err instanceof Error ? err.message : 'Publish failed'
       setPublishNote({ text, error: true })
@@ -475,9 +538,10 @@ export function CmsLayout({ user }: { user: User }) {
               </div>
 
               {isAlerts ? (
-                /* Alerts space sidebar */
                 <AlertsSidebar space={space} />
-              ) : (
+              ) : isBlog ? (
+                <BlogSidebar space={space} />
+              ) : settingsLoading && !isReservedSpace(space) ? null : (
                 /* Pages/Components sidebar (web, mobile, apps) */
                 <>
                   {/* Unsectioned pages */}

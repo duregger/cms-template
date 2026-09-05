@@ -22,12 +22,11 @@ function field(draft: FieldDraft): CmsVariableField {
 }
 
 const COPY = {
-  tagline: 'Our programs',
-  headline: 'Work that builds community',
-  detail:
-    'Curbside provides employment, income, and job skills training for people transitioning out of homelessness in Oklahoma City.',
+  tagline: 'Section',
+  headline: 'Tell your story',
+  detail: 'Replace this copy. Add a photo and pick a layout that fits the section.',
   button_text: 'Learn more',
-  button_url: '/our-programs',
+  button_url: '/',
 }
 
 function sharedFields(layout: ContentBlockLayout, includeImage: boolean): FieldDraft[] {

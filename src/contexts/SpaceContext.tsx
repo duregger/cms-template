@@ -1,7 +1,8 @@
 import { createContext, useContext, useMemo } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
 import type { CmsSpace } from '@/types/cms'
-import { CMS_SPACES } from '@/types/cms'
+import { CMS_SPACES, isReservedSpace } from '@/types/cms'
+import { useProjectSettings } from '@/hooks/useProjectSettings'
 
 type SpaceContextValue = {
   space: CmsSpace
@@ -9,16 +10,25 @@ type SpaceContextValue = {
 
 export const SpaceContext = createContext<SpaceContextValue | null>(null)
 
-const VALID_SPACES = new Set<string>(CMS_SPACES.map((s) => s.id))
+const VALID_RESERVED = new Set<string>(CMS_SPACES.map((s) => s.id))
 
 export function SpaceProvider({ children }: { children: React.ReactNode }) {
   const { space } = useParams<{ space: string }>()
+  const { settings, loading } = useProjectSettings()
 
   const value = useMemo(() => {
-    if (!space || !VALID_SPACES.has(space)) return null
-    return { space: space as CmsSpace }
-  }, [space])
+    if (!space) return null
+    if (VALID_RESERVED.has(space) || isReservedSpace(space)) {
+      return { space }
+    }
+    if (settings?.blogSpaces?.some((b) => b.id === space)) {
+      return { space }
+    }
+    if (loading) return undefined
+    return null
+  }, [space, settings?.blogSpaces, loading])
 
+  if (value === undefined) return null
   if (!value) return <Navigate to="/web" replace />
 
   return (

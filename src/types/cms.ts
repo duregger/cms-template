@@ -1,4 +1,11 @@
-export type CmsSpace = 'web' | 'mobile-apps' | 'kiosk' | 'alerts'
+export type ReservedSpace = 'web' | 'mobile-apps' | 'kiosk' | 'alerts'
+/** Reserved spaces plus optional blog slugs from Client Setup. */
+export type CmsSpace = ReservedSpace | (string & {})
+
+export type BlogSpaceDef = {
+  id: string
+  label: string
+}
 
 export type CmsNotificationType = 'announcement_bar' | 'alert'
 
@@ -53,28 +60,54 @@ export const CMS_SPACES: { id: CmsSpace; label: string }[] = [
   { id: 'alerts', label: 'Alerts' },
 ]
 
-export const DEFAULT_SPACES: CmsSpace[] = ['web', 'alerts']
-export const OPTIONAL_SPACES: CmsSpace[] = ['mobile-apps', 'kiosk']
+export const DEFAULT_SPACES: ReservedSpace[] = ['web', 'alerts']
+export const OPTIONAL_SPACES: ReservedSpace[] = ['mobile-apps', 'kiosk']
+export const RESERVED_SPACE_IDS: ReservedSpace[] = ['web', 'mobile-apps', 'kiosk', 'alerts']
 
-export function spaceLabel(id: CmsSpace): string {
-  return CMS_SPACES.find((s) => s.id === id)?.label ?? id
+export function isReservedSpace(id: string): id is ReservedSpace {
+  return (RESERVED_SPACE_IDS as readonly string[]).includes(id)
 }
 
-export function isDefaultSpace(id: CmsSpace): boolean {
+export function spaceLabel(id: string, blogSpaces?: BlogSpaceDef[] | null): string {
+  const reserved = CMS_SPACES.find((s) => s.id === id)
+  if (reserved) return reserved.label
+  const blog = blogSpaces?.find((b) => b.id === id)
+  if (blog?.label.trim()) return blog.label.trim()
+  return id
+}
+
+export function isDefaultSpace(id: string): boolean {
   return id === 'web' || id === 'alerts'
 }
 
-export function isSpacePublished(id: CmsSpace, published?: CmsSpace[] | null): boolean {
-  return isDefaultSpace(id) || (published ?? []).includes(id)
+export function isBlogSpace(id: string, blogSpaces?: BlogSpaceDef[] | null): boolean {
+  return (blogSpaces ?? []).some((b) => b.id === id)
 }
 
-export function visibleSwitcherSpaces(published?: CmsSpace[] | null, active?: CmsSpace): CmsSpace[] {
+export function isSpacePublished(
+  id: string,
+  published?: string[] | null,
+  blogSpaces?: BlogSpaceDef[] | null,
+): boolean {
+  return isDefaultSpace(id) || isBlogSpace(id, blogSpaces) || (published ?? []).includes(id)
+}
+
+export function visibleSwitcherSpaces(
+  published?: string[] | null,
+  active?: string,
+  blogSpaces?: BlogSpaceDef[] | null,
+): string[] {
+  const blogs = (blogSpaces ?? []).map((b) => b.id)
   const extras = CMS_SPACES
     .map((s) => s.id)
-    .filter((id) => OPTIONAL_SPACES.includes(id) && (
+    .filter((id) => (OPTIONAL_SPACES as readonly string[]).includes(id) && (
       (published ?? []).includes(id) || id === active
     ))
-  return ['web', 'alerts', ...extras]
+  const middle = [...blogs, ...extras.filter((id) => !blogs.includes(id))]
+  if (active && active !== 'web' && active !== 'alerts' && !middle.includes(active)) {
+    middle.push(active)
+  }
+  return ['web', ...middle, 'alerts']
 }
 
 export const CMS_NOTIFICATION_CATEGORIES: { id: string; label: string; description: string }[] = [

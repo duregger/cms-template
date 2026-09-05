@@ -22,11 +22,12 @@ export function SpaceSwitcher({
   const navigate = useNavigate()
   const { settings } = useProjectSettings()
   const published = settings?.publishedSpaces
+  const blogs = settings?.blogSpaces
   const admin = isBeginAdmin(user.email)
-  const tabs = visibleSwitcherSpaces(published, admin ? activeSpace : undefined)
-  const unpublished = OPTIONAL_SPACES.filter((id) => !isSpacePublished(id, published))
+  const tabs = visibleSwitcherSpaces(published, admin ? activeSpace : undefined, blogs)
+  const unpublished = OPTIONAL_SPACES.filter((id) => !isSpacePublished(id, published, blogs))
   const showAdd = admin && unpublished.length > 0
-  const canPublish = admin && OPTIONAL_SPACES.includes(activeSpace) && !isSpacePublished(activeSpace, published)
+  const canPublish = admin && OPTIONAL_SPACES.includes(activeSpace as typeof OPTIONAL_SPACES[number]) && !isSpacePublished(activeSpace, published, blogs)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -82,7 +83,7 @@ export function SpaceSwitcher({
                     : 'text-text-muted hover:text-brand-ink'
                 }`}
               >
-                {spaceLabel(id)}
+                {spaceLabel(id, blogs)}
               </button>
             )
           })}
@@ -120,7 +121,7 @@ export function SpaceSwitcher({
                       }}
                       className="block w-full px-3 py-2 text-left text-xs font-medium text-brand-ink hover:bg-brand-hover"
                     >
-                      {spaceLabel(id)}
+                      {spaceLabel(id, blogs)}
                     </button>
                   </li>
                 ))}
@@ -137,7 +138,7 @@ export function SpaceSwitcher({
           onClick={publishSpace}
           className="w-full rounded-control px-2 py-1.5 text-left text-[11px] font-medium text-brand-primary hover:bg-brand-hover disabled:opacity-50"
         >
-          {publishing ? 'Publishing…' : `Publish ${spaceLabel(activeSpace)}`}
+          {publishing ? 'Publishing…' : `Publish ${spaceLabel(activeSpace, blogs)}`}
         </button>
       )}
     </div>

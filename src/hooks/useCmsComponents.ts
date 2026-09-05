@@ -45,7 +45,6 @@ export function useCmsComponents(space: CmsSpace) {
     components: [],
     error: null,
   })
-
   const refresh = useCallback(async () => {
     setState((s) => ({ ...s, error: null }))
     try {

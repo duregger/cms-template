@@ -23,6 +23,11 @@ export type CmsAssetType =
   | 'logo-dark'
   | 'favicon'
 
+export function isImageFile(file: File): boolean {
+  if (file.type.startsWith('image/')) return true
+  return /\.(jpe?g|png|gif|webp|heic|heif|avif)$/i.test(file.name)
+}
+
 export async function uploadCmsAsset(
   file: File,
   type: CmsAssetType

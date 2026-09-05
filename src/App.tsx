@@ -24,8 +24,11 @@ import { CmsReleaseNotes } from '@/pages/CmsReleaseNotes'
 import { CmsDevDocs } from '@/pages/CmsDevDocs'
 import { CmsDesignSystem } from '@/pages/CmsDesignSystem'
 import { CmsSetup } from '@/pages/CmsSetup'
+import { CmsBlogPostsList } from '@/pages/CmsBlogPostsList'
+import { CmsBlogPostEditor } from '@/pages/CmsBlogPostEditor'
+import { CmsBlogCategories } from '@/pages/CmsBlogCategories'
 import { CMS_NAME, CMS_SHORT_NAME, allowedEditorDomains, isBeginAdmin, parseAllowList } from '@/lib/brand'
-import { isSpacePublished } from '@/types/cms'
+import { isBlogSpace, isReservedSpace, isSpacePublished } from '@/types/cms'
 import logo from '@/assets/logos/begin-logo.svg'
 import logoWhite from '@/assets/logos/begin-logo-white.svg'
 
@@ -40,10 +43,24 @@ function isAllowedEditor(email: string): boolean {
 function SpaceLayout({ user }: { user: User }) {
   const space = useSpace()
   const { settings, loading } = useProjectSettings()
-  if (!loading && !isSpacePublished(space, settings?.publishedSpaces) && !isBeginAdmin(user.email)) {
+  if (
+    !loading
+    && !isSpacePublished(space, settings?.publishedSpaces, settings?.blogSpaces)
+    && !isBeginAdmin(user.email)
+  ) {
     return <Navigate to="/web" replace />
   }
   return <CmsLayout user={user} />
+}
+
+function SpaceIndex({ user }: { user: User }) {
+  const space = useSpace()
+  const { settings, loading } = useProjectSettings()
+  if (isBlogSpace(space, settings?.blogSpaces)) {
+    return <CmsBlogPostsList user={user} />
+  }
+  if (loading && !isReservedSpace(space)) return null
+  return <CmsPagesList user={user} />
 }
 
 function SpaceRoutes({ user }: { user: User }) {
@@ -54,8 +71,10 @@ function SpaceRoutes({ user }: { user: User }) {
           <CmsAlertsProvider>
             <Routes>
               <Route element={<SpaceLayout user={user} />}>
-                <Route index element={<CmsPagesList user={user} />} />
+                <Route index element={<SpaceIndex user={user} />} />
                 <Route path="pages/:slug" element={<CmsPageEditor user={user} />} />
+                <Route path="posts/:slug" element={<CmsBlogPostEditor user={user} />} />
+                <Route path="categories" element={<CmsBlogCategories />} />
                 <Route path="components" element={<CmsComponentsList user={user} />} />
                 <Route path="components/:id" element={<CmsComponentEditor user={user} />} />
                 <Route path="design-system" element={<CmsDesignSystem />} />

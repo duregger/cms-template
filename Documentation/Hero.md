@@ -154,8 +154,8 @@ Split-layout and image-centric variants always center their text.
 ## Text Behavior
 
 - All text elements are uppercase
-- Headline and H2 use Optic Heavy Expanded
-- Subheader uses Metallophile Medium
+- Headline and H2 use the CMS headline face (Archivo Expanded)
+- Subheader uses the CMS subheader face (Archivo Expanded Medium)
 - Text wraps naturally within the available space
 - Colors can be overridden per-slide via `headline_color`, `subheader_color`, `h2_color`
 - Button color can be overridden via `button_color`

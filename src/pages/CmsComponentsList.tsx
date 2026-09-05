@@ -9,8 +9,8 @@ import type { CmsComponentVariable } from '@/types/cms'
 
 function defaultVariablesForName(name: string): CmsComponentVariable[] {
   const slug = name.toLowerCase().replace(/[\s-]+/g, '_')
-  if (slug.startsWith('hero')) return defaultHeroSliderVariables()
-  if (slug.startsWith('content_block') || slug.startsWith('contentblock')) {
+  if (slug.includes('hero') || slug.includes('slider')) return defaultHeroSliderVariables()
+  if (slug.includes('content_block') || slug.includes('contentblock')) {
     return defaultContentBlockVariables()
   }
   return []

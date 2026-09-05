@@ -1,4 +1,4 @@
-import type { CmsSpace } from '@/types/cms'
+import type { BlogSpaceDef, CmsSpace } from '@/types/cms'
 
 export type ProjectSettings = {
   brandName: string
@@ -13,6 +13,8 @@ export type ProjectSettings = {
   faviconUrl?: string
   /** Optional spaces (Apps, Kiosk) shown to every editor once published. */
   publishedSpaces?: CmsSpace[]
+  /** Blog spaces created in Client Setup. Visible immediately, before Alerts. */
+  blogSpaces?: BlogSpaceDef[]
   setupComplete: boolean
   updatedAt?: number
   updatedBy?: string

@@ -72,7 +72,7 @@ function OverviewSection() {
         This CMS is a standalone content management system that serves content to connected platforms. It is organized into <strong>Spaces</strong> — isolated content domains that scope pages, components, and features to a specific platform or function.
       </P>
       <P>
-        The CMS uses Firebase Firestore as its data layer. Consumer applications can read content from Firestore via a secondary Firebase app, or over REST for pages, published tokens, and notifications.
+        The CMS uses Firebase Firestore as its data layer. Consumer applications can read content from Firestore via a secondary Firebase app, or over REST for pages, published blog posts, published tokens, and notifications.
       </P>
       <Table
         headers={['Layer', 'Technology']}
@@ -106,17 +106,21 @@ function SpacesSection() {
         Every piece of CMS content belongs to a <strong>Space</strong>. Spaces are the top-level organizational unit and determine both the Firestore data path and the CMS admin UI.
       </P>
       <P>
-        The switcher always shows <strong>Web</strong> and <strong>Alerts</strong>. Extra spaces (Apps, Kiosk) stay hidden until a <InlineCode>@beginthework.com</InlineCode> admin publishes them. That admin sees a <strong>+</strong> to open an unpublished space and work on it first.
+        The switcher always shows <strong>Web</strong> and <strong>Alerts</strong>. Blog spaces from Client Setup sit between them. Extra spaces (Apps, Kiosk) stay hidden until a <InlineCode>@beginthework.com</InlineCode> admin publishes them. That admin sees a <strong>+</strong> to open an unpublished space and work on it first.
       </P>
       <Table
         headers={['Space ID', 'Label', 'Visibility', 'Content Types']}
         rows={[
           ['web', 'Web', 'Always on', 'Pages, Components'],
+          ['{blogId}', 'Blog (e.g. Updates)', 'On when added in Client Setup', 'Posts, Categories'],
           ['alerts', 'Alerts', 'Always on', 'Announcement Bars, Alert Modals'],
           ['mobile-apps', 'Apps', 'Optional — hidden until published', 'Pages, Components'],
           ['kiosk', 'Kiosk', 'Optional — hidden until published', 'Pages, Components'],
         ]}
       />
+      <P>
+        Blog space ids live on <InlineCode>settings/project.blogSpaces</InlineCode> as <InlineCode>{'{ id, label }'}</InlineCode>. Curbside’s blog id is <InlineCode>updates</InlineCode>. Reserved ids (<InlineCode>web</InlineCode>, <InlineCode>alerts</InlineCode>, <InlineCode>mobile-apps</InlineCode>, <InlineCode>kiosk</InlineCode>) cannot be a blog.
+      </P>
       <SubHeading>Firestore path structure</SubHeading>
       <P>
         All space data lives under <InlineCode>{'spaces/{spaceId}/'}</InlineCode> in Firestore. Each space has its own isolated subcollections. <strong>Web</strong> and <strong>Alerts</strong> are always present. Additional spaces are optional — a <InlineCode>@beginthework.com</InlineCode> admin adds them with <strong>+</strong> and they only appear in the switcher after publish.
@@ -128,6 +132,12 @@ function SpacesSection() {
 │   ├── pages/_sections               # Sidebar section groupings
 │   ├── components/{id}               # Reusable components
 │   └── components/_order             # Sidebar component order
+├── updates/                          # blog space from Client Setup (example)
+│   ├── posts/{slug}                  # Editor drafts
+│   ├── published-posts/{slug}        # Live posts (public API)
+│   ├── categories/{id}               # Taxonomy ({ id, name, slug })
+│   ├── publish-log/{id}
+│   └── releases/current
 ├── alerts/                           # always on
 │   └── notifications/{id}            # Announcement bars + alert modals
 │
@@ -266,6 +276,26 @@ interface FontFamilyDef {
       <P>
         <strong>Legacy:</strong> the old global <InlineCode>{'design-tokens/current'}</InlineCode> document is kept temporarily as a backward-compatible fallback and will be migrated away.
       </P>
+
+      <SubHeading>Blog posts</SubHeading>
+      <P>
+        A blog space is not Web pages. Editor drafts live at <InlineCode>{'spaces/{blogId}/posts/{slug}'}</InlineCode>. Footer or header <strong>Publish</strong> copies live posts to <InlineCode>{'spaces/{blogId}/published-posts/{slug}'}</InlineCode>. The public API, sitemap, and llms.txt read only that published snapshot. Categories are <InlineCode>{'spaces/{blogId}/categories/{id}'}</InlineCode> with <InlineCode>{'{ id, name, slug }'}</InlineCode>; each post stores category ids in <InlineCode>categories: string[]</InlineCode>.
+      </P>
+      <Code>{`{
+  slug: "we-got-drafted",
+  title: "We got drafted!",
+  subtitle: string | null,
+  excerpt: string | null,
+  heroImage: string | null,
+  heroVideo: string | null,
+  bodyHtml: "<p>…</p>",
+  categories: ["community"],
+  status: "draft" | "scheduled" | "published",
+  publishedAt: 1778000000000,
+  seoTitle: string | null,
+  seoDescription: string | null,
+  ogImage: string | null
+}`}</Code>
     </>
   )
 }
@@ -275,7 +305,7 @@ function PagesSection() {
     <>
       <SectionHeading id="pages">Pages &amp; Sections</SectionHeading>
       <P>
-        Pages are the primary content unit for Web and any published extra spaces. Each page is a Firestore document identified by its slug.
+        Pages are the primary content unit for Web and any published extra spaces. Each page is a Firestore document identified by its slug. Client Setup can add <strong>Home</strong>, <strong>Home Slider</strong> (five layouts), and <strong>Home Content Block</strong> (four layouts). You can also run <InlineCode>npm run seed:web-home</InlineCode> after pointing <InlineCode>.firebaserc</InlineCode> at the new project.
       </P>
 
       <SubHeading>Page document</SubHeading>
@@ -524,7 +554,7 @@ function ApiSection() {
     <>
       <SectionHeading id="api">API Reference</SectionHeading>
       <P>
-        Cloud Functions expose a REST API for notifications, published design tokens, pages, brand (name, logos), sitemap, and llms.txt. Draft tokens stay in Firestore and are not served here.
+        Cloud Functions expose a REST API for notifications, published design tokens, pages, published blog posts, brand (name, logos), sitemap, and llms.txt. Draft tokens and unpublished posts stay in Firestore and are not served here.
       </P>
 
       <SubHeading>Notifications</SubHeading>
@@ -651,8 +681,8 @@ Response:
         rows={[
           ['GET', '/api/pages/:space', 'List published pages, nav order, and sidebar sections'],
           ['GET', '/api/pages/:space/:slug', 'Get one published page (sections, SEO, Open Graph, AEO)'],
-          ['GET', '/sitemap.xml', 'Published web URLs (skips noIndex, _order, _sections)'],
-          ['GET', '/llms.txt', 'Published home speakable summary and FAQs'],
+          ['GET', '/sitemap.xml', 'Published web URLs plus live blog posts (skips noIndex, _order, _sections)'],
+          ['GET', '/llms.txt', 'Published home speakable summary, FAQs, and live blog links'],
         ]}
       />
 
@@ -680,6 +710,60 @@ Response:
   "space": "web",
   "slug": "home",
   "data": { "id": "home", "slug": "home", "sections": [], "seo": { … } }
+}`}</Code>
+
+      <SubHeading>Blog posts</SubHeading>
+      <P>
+        Live posts only — drafts and future scheduled posts are omitted. <InlineCode>space</InlineCode> must be a blog id from Client Setup (not <InlineCode>web</InlineCode> or other reserved spaces). Curbside’s blog is <InlineCode>updates</InlineCode>. Public URLs are <InlineCode>{'{siteUrl}/{space}/{slug}'}</InlineCode>, e.g. <InlineCode>https://www.curbside.org/updates/we-got-drafted</InlineCode>.
+      </P>
+      <P>
+        There is no categories REST route. Filter with <InlineCode>post.categories</InlineCode> (ids). Names live at <InlineCode>{'spaces/{space}/categories/{id}'}</InlineCode> in Firestore. <InlineCode>ogImage</InlineCode> is a 1200×630 crop of the hero when the OG function has run; otherwise it falls back to <InlineCode>heroImage</InlineCode>. <InlineCode>bodyHtml</InlineCode> is trusted CMS HTML — render it. Galleries are <InlineCode>{'<figure class="blog-gallery" data-type="blog-gallery" data-images="[…]">'}</InlineCode> with child <InlineCode>img</InlineCode> tags.
+      </P>
+      <Table
+        headers={['Method', 'Path', 'Description']}
+        rows={[
+          ['GET', '/api/posts/:space', 'List live published posts, newest first'],
+          ['GET', '/api/posts/:space/:slug', 'Get one live published post'],
+        ]}
+      />
+
+      <SubHeading>Example: List Updates posts</SubHeading>
+      <Code>{`GET https://curbside-cms.web.app/api/posts/updates
+
+{
+  "success": true,
+  "space": "updates",
+  "count": 1,
+  "data": {
+    "posts": [
+      {
+        "slug": "we-got-drafted",
+        "title": "We got drafted!",
+        "subtitle": null,
+        "excerpt": null,
+        "heroImage": "https://…",
+        "heroVideo": null,
+        "bodyHtml": "<p>…</p>",
+        "categories": ["community"],
+        "status": "published",
+        "publishedAt": 1778000000000,
+        "seoTitle": null,
+        "seoDescription": null,
+        "ogImage": "https://…/cms/og/updates/we-got-drafted.jpg",
+        "updatedAt": 1778000000000
+      }
+    ]
+  }
+}`}</Code>
+
+      <SubHeading>Example: One post</SubHeading>
+      <Code>{`GET https://curbside-cms.web.app/api/posts/updates/we-got-drafted
+
+{
+  "success": true,
+  "space": "updates",
+  "slug": "we-got-drafted",
+  "data": { "slug": "we-got-drafted", "title": "We got drafted!", "bodyHtml": "<p>…</p>" }
 }`}</Code>
 
       <SubHeading>Components</SubHeading>
@@ -740,6 +824,7 @@ const tokensSnap = await getDoc(tokensRef)
         headers={['Consumer app', 'Space ID', 'What to read']}
         rows={[
           ['Consumer website', 'web', 'pages, components, design-tokens, notifications, /api/brand'],
+          ['Consumer website blog', 'updates', 'GET /api/posts/updates, GET /api/posts/updates/:slug'],
           ['iOS / Android app (optional)', 'mobile-apps', 'pages, components, design-tokens, notifications'],
           ['In-store kiosk (optional)', 'kiosk', 'pages, components, design-tokens, notifications'],
         ]}
@@ -786,6 +871,48 @@ const { data } = await res.json()
 
 <img src={data.darkLogoUrl} alt={data.brandName} />   // light backgrounds
 <img src={data.lightLogoUrl} alt={data.brandName} />  // dark backgrounds`}</Code>
+
+      <SubHeading>Blog on the website</SubHeading>
+      <P>
+        Do not model blog posts as Web pages. Read the Updates space over REST (or Firestore <InlineCode>published-posts</InlineCode> if the functions deploy has not landed). Route <InlineCode>/updates</InlineCode> as the index and <InlineCode>/updates/:slug</InlineCode> as the post. Filter with <InlineCode>categories</InlineCode>. Use <InlineCode>ogImage</InlineCode> for social tags. Render <InlineCode>bodyHtml</InlineCode> as HTML. Style with published web tokens — do not invent a second type system.
+      </P>
+      <Code>{`const CMS_API = 'https://curbside-cms.web.app'
+const BLOG = 'updates'
+
+type CmsPost = {
+  slug: string
+  title: string
+  subtitle: string | null
+  excerpt: string | null
+  heroImage: string | null
+  heroVideo: string | null
+  bodyHtml: string
+  categories: string[]
+  publishedAt: number | null
+  seoTitle: string | null
+  seoDescription: string | null
+  ogImage: string | null
+}
+
+export async function listPosts(): Promise<CmsPost[]> {
+  const res = await fetch(\`\${CMS_API}/api/posts/\${BLOG}\`, { cache: 'no-store' })
+  const json = await res.json()
+  if (!json.success) throw new Error(json.error)
+  return json.data.posts
+}
+
+export async function getPost(slug: string): Promise<CmsPost> {
+  const res = await fetch(\`\${CMS_API}/api/posts/\${BLOG}/\${slug}\`, { cache: 'no-store' })
+  const json = await res.json()
+  if (!json.success) throw new Error(json.error)
+  return json.data
+}
+
+// Index: /updates          → listPosts()
+// Post:  /updates/:slug    → getPost(slug)
+// Meta:  og:image = post.ogImage ?? post.heroImage
+// Body:  <article dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+`}</Code>
     </>
   )
 }

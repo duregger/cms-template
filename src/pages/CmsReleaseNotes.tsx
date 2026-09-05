@@ -6,6 +6,34 @@ interface CmsRelease {
 
 const RELEASES: CmsRelease[] = [
   {
+    version: '0.3.0',
+    date: 'September 5, 2026',
+    groups: [
+      {
+        heading: 'Blog',
+        items: [
+          'Client Setup can add a blog space (Curbside uses Updates)',
+          'Posts have draft, scheduled, and published states, plus categories',
+          'The editor supports rich text, Markdown, HTML, emoji, images, and photo galleries',
+        ],
+      },
+      {
+        heading: 'Publish',
+        items: [
+          'Save keeps a draft; Publish copies live posts for the website',
+          'A hero image becomes a 1200×630 social image on publish',
+        ],
+      },
+      {
+        heading: 'Website',
+        items: [
+          'GET /api/posts/{space} and /api/posts/{space}/{slug} serve live posts',
+          'sitemap.xml and llms.txt include published blog URLs',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.0',
     date: 'September 5, 2026',
     groups: [

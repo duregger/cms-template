@@ -63,7 +63,7 @@ export function CmsPagesList({ user }: { user: User }) {
       </h1>
       {space === 'web' && (
         <p className="mb-6 text-sm text-text-muted">
-          The Web space is seeded with the Curbside sitemap (Home, About Us, Get Involved, Our Programs, Contact Us, DONATE NOW, and the five program sites). Open a page to add a hero slider and content blocks. Program links belong in components, not extra pages.
+          Web starts with a Home page, Home Slider, and Home Content Block. Open Home to edit them, or create more pages here.
         </p>
       )}
 

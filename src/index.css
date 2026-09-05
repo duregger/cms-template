@@ -88,72 +88,6 @@ select:not([multiple])::-ms-expand {
   display: none;
 }
 
-/* Metallophile Sp8 */
-@font-face {
-  font-family: 'Metallophile Sp8';
-  src: url('/fonts/MetallophileSp8-Light.otf') format('opentype');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Metallophile Sp8';
-  src: url('/fonts/MetallophileSp8-LightItalic.otf') format('opentype');
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Metallophile Sp8';
-  src: url('/fonts/MetallophileSp8-Medium.otf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Metallophile Sp8';
-  src: url('/fonts/MetallophileSp8-MediumItalic.otf') format('opentype');
-  font-weight: 500;
-  font-style: italic;
-  font-display: swap;
-}
-
-/* Optic — Medium Expanded (500) for buttons */
-@font-face {
-  font-family: 'Optic';
-  src: url('/fonts/Optic-MediumExpanded.otf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-stretch: expanded;
-  font-display: swap;
-}
-/* Optic — Bold Expanded (700) for labels */
-@font-face {
-  font-family: 'Optic';
-  src: url('/fonts/Optic-BoldExpanded.otf') format('opentype');
-  font-weight: 700;
-  font-style: normal;
-  font-stretch: expanded;
-  font-display: swap;
-}
-/* Optic — Medium (500) for nav links */
-@font-face {
-  font-family: 'Optic';
-  src: url('/fonts/Optic-Medium.otf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-/* Optic — Heavy Expanded (800) for headlines */
-@font-face {
-  font-family: 'Optic';
-  src: url('/fonts/Optic-HeavyExpanded.otf') format('opentype');
-  font-weight: 800;
-  font-style: normal;
-  font-stretch: expanded;
-  font-display: swap;
-}
-
 /* Button variants driven by design tokens */
 .btn-primary {
   background-color: var(--btn-primary-bg);
@@ -164,34 +98,45 @@ select:not([multiple])::-ms-expand {
   color: var(--btn-secondary-text);
 }
 
+/* Writing fields. Do not put color-emoji families in this stack — they steal 0–9 and space them out. */
+.font-emoji {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-stretch: normal;
+  letter-spacing: 0;
+  font-variant-numeric: normal;
+  font-feature-settings: normal;
+  font-variant-emoji: emoji;
+}
+
 /* Typography system */
 .font-button {
-  font-family: 'Cabin', 'Helvetica Neue', sans-serif;
+  font-family: 'Cabin', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   font-weight: 700;
   line-height: 120%;
 }
 
 .font-label {
-  font-family: 'Optic', 'Impact', 'Helvetica Neue', sans-serif;
+  font-family: 'Archivo', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   font-stretch: expanded;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .font-body {
-  font-family: 'Cabin', 'Helvetica Neue', sans-serif;
+  font-family: 'Cabin', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   font-weight: 500;
 }
 
 .font-headline {
-  font-family: 'Optic', 'Impact', 'Helvetica Neue', sans-serif;
+  font-family: 'Archivo', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   font-stretch: expanded;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .font-subheader {
-  font-family: 'Metallophile Sp8', 'Helvetica Neue', sans-serif;
+  font-family: 'Archivo', 'Helvetica Neue', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-stretch: expanded;
   font-weight: 500;
   text-transform: uppercase;
 }
@@ -204,4 +149,167 @@ select:not([multiple])::-ms-expand {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+.blog-body-editor__prose {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-stretch: normal;
+  letter-spacing: 0;
+  font-variant-numeric: normal;
+  font-feature-settings: normal;
+  font-variant-emoji: emoji;
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-break: auto;
+}
+
+.blog-body-editor__prose p {
+  white-space: normal;
+}
+
+.blog-body-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--cms-text-subtle);
+}
+
+.blog-body-editor__prose h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+}
+
+.blog-body-editor__prose h3,
+.blog-body-editor__prose h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.4rem;
+}
+
+.blog-body-editor__prose p {
+  margin: 0.5rem 0;
+}
+
+.blog-body-editor__prose ul,
+.blog-body-editor__prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.blog-body-editor__prose blockquote {
+  margin: 0.75rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--cms-hairline);
+  color: var(--cms-text-muted);
+}
+
+.blog-body-editor__img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.blog-gallery {
+  margin: 0.75rem 0;
+  border-radius: 10px;
+  background: var(--cms-hairline-soft);
+  padding: 10px;
+}
+
+.blog-gallery--selected {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.blog-gallery__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.blog-gallery__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cms-text-muted);
+}
+
+.blog-gallery__empty {
+  margin: 0;
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--cms-text-muted);
+}
+
+.blog-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.blog-gallery__item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  outline-offset: -1px;
+}
+
+.blog-gallery__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.blog-gallery__meta input {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: var(--cms-surface);
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--brand-ink);
+}
+
+.blog-gallery__meta input:focus-visible {
+  outline: 2px solid var(--brand-primary);
+}
+
+.blog-gallery__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.blog-gallery__actions button {
+  min-width: 28px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--cms-surface);
+  color: var(--cms-text-muted);
+  font-size: 12px;
+}
+
+.blog-gallery__actions button:hover:not(:disabled) {
+  color: var(--brand-ink);
+}
+
+.blog-gallery__actions button:disabled {
+  opacity: 0.35;
+}
+
+.blog-gallery__actions button:focus-visible {
+  outline: 2px solid var(--brand-primary);
 }

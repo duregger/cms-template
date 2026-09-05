@@ -11,10 +11,15 @@ import {
   hasClientLogo,
   type ProjectSettings,
 } from '@/types/settings'
+import { seedWebHome } from '@/lib/seed-web-home'
+import { blogSpaceFromInput, slugifySpaceId, titleCaseSlug, validateBlogSpaceId } from '@/lib/blog-space'
+import { HERO_SLIDER_VARIABLE_DEFS } from '@/lib/hero-slider-variables'
+import { CONTENT_BLOCK_VARIABLE_DEFS } from '@/lib/content-block-variables'
 
 const STEPS = [
   { id: 'brand', label: 'Brand' },
   { id: 'auth', label: 'Auth' },
+  { id: 'content', label: 'Content' },
   { id: 'review', label: 'Review' },
 ] as const
 
@@ -148,9 +153,19 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
   const [form, setForm] = useState<ProjectSettings>(initial ?? EMPTY_PROJECT_SETTINGS)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [seedHome, setSeedHome] = useState(true)
+  const [addBlog, setAddBlog] = useState(false)
+  const [blogId, setBlogId] = useState('blog')
+  const [blogLabel, setBlogLabel] = useState('')
 
   useEffect(() => {
     if (initial) setForm(initial)
+    const existing = initial?.blogSpaces?.[0]
+    if (existing) {
+      setAddBlog(true)
+      setBlogId(existing.id)
+      setBlogLabel(existing.label)
+    }
   }, [initial])
 
   const patch = (partial: Partial<ProjectSettings>) => {
@@ -179,6 +194,17 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
       setSaving(false)
       return
     }
+    const blogSlug = slugifySpaceId(blogId)
+    if (complete && addBlog) {
+      const blogError = validateBlogSpaceId(blogSlug)
+      if (blogError) {
+        setError(blogError)
+        setStep('content')
+        setSaving(false)
+        return
+      }
+    }
+
     try {
       const darkLogoUrl = form.darkLogoUrl || form.logoUrl
       const payload: ProjectSettings = {
@@ -189,12 +215,18 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
         darkLogoUrl,
         lightLogoUrl: form.lightLogoUrl,
         logoUrl: darkLogoUrl,
+        ...(complete && addBlog
+          ? { blogSpaces: [blogSpaceFromInput(blogSlug, blogLabel)] }
+          : {}),
         setupComplete: complete,
         updatedAt: Date.now(),
         updatedBy: user.email ?? user.uid,
       }
       await setDoc(PROJECT_SETTINGS_REF(), payload, { merge: true })
       setForm(payload)
+      if (complete && seedHome) {
+        await seedWebHome('web', user.email ?? user.uid, { force: true })
+      }
       if (complete) navigate('/web', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save setup.')
@@ -313,6 +345,94 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
           </>
         )}
 
+        {step === 'content' && (
+          <>
+            <p className="text-sm text-text-muted">
+              Optionally start Web with a Home page and the two components you will edit first.
+            </p>
+            <label className="flex cursor-pointer items-start gap-3 rounded-control border border-hairline bg-surface px-4 py-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 accent-brand-primary"
+                checked={seedHome}
+                onChange={(e) => setSeedHome(e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-brand-ink">
+                  Add starter home content
+                </span>
+                <span className="mt-1 block text-xs text-text-muted">
+                  Creates Home, Home Slider, and Home Content Block. Existing pages and copy stay as they are. Missing layouts are added.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-control border border-hairline bg-surface px-4 py-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 accent-brand-primary"
+                checked={addBlog}
+                onChange={(e) => setAddBlog(e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-brand-ink">
+                  Add a blog
+                </span>
+                <span className="mt-1 block text-xs text-text-muted">
+                  Creates a post space between Web and Alerts. Editors see it immediately. Off by default.
+                </span>
+              </span>
+            </label>
+            {addBlog && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Space id"
+                  hint="URL and switcher slug. Reserved: web, alerts, mobile-apps, kiosk."
+                >
+                  <input
+                    className={inputClass}
+                    value={blogId}
+                    onChange={(e) => setBlogId(e.target.value)}
+                    onBlur={() => setBlogId(slugifySpaceId(blogId) || 'blog')}
+                    placeholder="blog"
+                  />
+                </Field>
+                <Field label="Label" hint="Shown in the switcher. Defaults to the title-cased id.">
+                  <input
+                    className={inputClass}
+                    value={blogLabel}
+                    onChange={(e) => setBlogLabel(e.target.value)}
+                    placeholder={titleCaseSlug(slugifySpaceId(blogId) || 'blog')}
+                  />
+                </Field>
+              </div>
+            )}
+            {seedHome && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-text-subtle">
+                    Home Slider layouts
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-brand-ink">
+                    {HERO_SLIDER_VARIABLE_DEFS.map((v) => (
+                      <li key={v.key}>{v.label}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-text-subtle">
+                    Home Content Block layouts
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-brand-ink">
+                    {CONTENT_BLOCK_VARIABLE_DEFS.map((v) => (
+                      <li key={v.key}>{v.label}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {step === 'review' && (
           <>
             <dl className="grid gap-3 text-sm">
@@ -359,6 +479,22 @@ export function CmsSetup({ user, initial }: { user: User; initial: ProjectSettin
                 <dd className="text-brand-ink">
                   @{ADMIN_DOMAINS[0]}
                   {form.clientDomain ? ` and @${form.clientDomain}` : ''}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-text-subtle">Starter home</dt>
+                <dd className="text-brand-ink">
+                  {seedHome
+                    ? 'Add Home, Home Slider (5 layouts), and Home Content Block (4 layouts)'
+                    : 'Skip — start with an empty Web space'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-text-subtle">Blog</dt>
+                <dd className="text-brand-ink">
+                  {addBlog
+                    ? `${blogSpaceFromInput(blogId, blogLabel).label} (/${slugifySpaceId(blogId) || 'blog'}) — published immediately`
+                    : 'Skip — Web and Alerts only'}
                 </dd>
               </div>
             </dl>
